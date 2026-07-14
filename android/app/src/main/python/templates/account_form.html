@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Neues Konto – Hauptbuch{% endblock %}
+{% block content %}
+
+<h1>Neues Konto</h1>
+<p class="subtitle">Konto, Bargeldbestand oder Anlage anlegen.</p>
+
+<div class="form-card">
+<form method="post">
+    <div class="field">
+        <label for="name">Name</label>
+        <input type="text" name="name" id="name" placeholder="z. B. Girokonto Sparkasse" value="{{ form.get('name', '') }}" required>
+    </div>
+    <div class="field">
+        <label for="type">Typ</label>
+        <select name="type" id="type" required>
+            <option value="Konto" {{ 'selected' if form.get('type', 'Konto') == 'Konto' }}>Konto</option>
+            <option value="Bar" {{ 'selected' if form.get('type') == 'Bar' }}>Bar</option>
+            <option value="Anlage" {{ 'selected' if form.get('type') == 'Anlage' }}>Anlage</option>
+        </select>
+    </div>
+    <div class="field">
+        <label for="initial_balance">Anfangsbestand (€)</label>
+        <input type="text" name="initial_balance" id="initial_balance" placeholder="0,00" value="{{ form.get('initial_balance', '0') }}">
+    </div>
+    <div class="actions-row" style="margin-bottom:0;">
+        <a href="{{ url_for('accounts_overview') }}" class="btn btn-ghost">Abbrechen</a>
+        <button type="submit" class="btn btn-primary">Konto anlegen</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}

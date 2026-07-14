@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Berichte – Hauptbuch{% endblock %}
+{% block content %}
+
+<h1>Berichte</h1>
+<p class="subtitle">Buchungen frei nach Kategorie, Konto oder Zeitraum gruppieren und auswerten.</p>
+
+<form method="get" class="form-card" style="max-width:none; margin-bottom:24px;">
+    <div class="field-row" style="grid-template-columns: repeat(4, 1fr); margin-bottom:16px;">
+        <div class="field" style="margin-bottom:0;">
+            <label for="gruppierung">Gruppieren nach</label>
+            <select name="gruppierung" id="gruppierung">
+                {% for key, opt in group_options.items() %}
+                <option value="{{ key }}" {{ 'selected' if key == group_by }}>{{ opt.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+            <label for="arten">Buchungsarten</label>
+            <select name="arten" id="arten">
+                {% for key, opt in arten_options.items() %}
+                <option value="{{ key }}" {{ 'selected' if key == arten }}>{{ opt.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+            <label for="von">Von</label>
+            <input type="date" name="von" id="von" value="{{ f_von }}">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+            <label for="bis">Bis</label>
+            <input type="date" name="bis" id="bis" value="{{ f_bis }}">
+        </div>
+    </div>
+    <div class="field-row" style="grid-template-columns: 1fr 2fr; align-items:flex-end;">
+        <div class="field" style="margin-bottom:0;">
+            <label for="konto">Konto</label>
+            <select name="konto" id="konto">
+                <option value="">Alle Konten</option>
+                {% for a in accounts %}
+                <option value="{{ a.id }}" {{ 'selected' if f_konto == a.id }}>{{ a.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex; gap:10px; justify-self:end;">
+            <button type="submit" class="btn btn-primary">Bericht erstellen</button>
+            <a href="{{ url_for('reports_export', gruppierung=group_by, arten=arten, von=f_von, bis=f_bis, konto=f_konto) }}" class="btn">⭳ CSV exportieren</a>
+        </div>
+    </div>
+</form>
+
+{% if group_by == 'konto' and arten == 'alle' %}
+<p class="muted" style="margin-top:-14px; margin-bottom:18px; font-size:13px;">
+    Hinweis: Umbuchungen werden hier nur dem Quellkonto zugeordnet, nicht dem Zielkonto.
+</p>
+{% endif %}
+
+<div class="kpi-row" style="grid-template-columns: repeat(3, 1fr);">
+    <div class="kpi">
+        <span class="eyebrow">Einnahmen im Zeitraum</span>
+        <span class="value positive">{{ summe_einnahmen | eur }}</span>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">Ausgaben im Zeitraum</span>
+        <span class="value negative">{{ summe_ausgaben | eur }}</span>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">Saldo im Zeitraum</span>
+        <span class="value {{ 'positive' if summe_einnahmen - summe_ausgaben >= 0 else 'negative' }}">
+            {{ (summe_einnahmen - summe_ausgaben) | eur }}
+        </span>
+    </div>
+</div>
+
+{% if results %}
+<table class="ledger">
+    <thead>
+        <tr>
+            <th>{{ group_options[group_by].label.split(' (')[0] }}</th>
+            <th colspan="2">Einnahmen</th>
+            <th colspan="2">Ausgaben</th>
+            <th style="text-align:right;">Saldo</th>
+            <th style="text-align:right;">Anzahl</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in results %}
+        <tr>
+            <td data-label="{{ group_options[group_by].label.split(' (')[0] }}">{{ r.label }}</td>
+            <td data-label="Einnahmen" class="amount positive" style="width:90px;">{{ r.einnahmen | eur }}</td>
+            <td class="cat-bar" style="width:80px;"><div class="bar-track"><div class="bar-fill" style="width:{{ (r.einnahmen / max_wert * 100) if max_wert else 0 }}%; background:var(--positive)"></div></div></td>
+            <td data-label="Ausgaben" class="amount negative" style="width:90px;">{{ r.ausgaben | eur }}</td>
+            <td class="cat-bar" style="width:80px;"><div class="bar-track"><div class="bar-fill" style="width:{{ (r.ausgaben / max_wert * 100) if max_wert else 0 }}%; background:var(--negative)"></div></div></td>
+            <td data-label="Saldo" class="amount {{ 'positive' if r.saldo >= 0 else 'negative' }}">{{ r.saldo | eur }}</td>
+            <td data-label="Anzahl" class="amount muted">{{ r.anzahl }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">Für diese Filterauswahl liegen keine Buchungen vor.</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Buchungen – Hauptbuch{% endblock %}
+{% block content %}
+
+<div class="actions-row">
+    <div>
+        <h1>Buchungen</h1>
+        <p class="subtitle" style="margin-bottom:0;">Alle Einnahmen, Ausgaben und Umbuchungen.</p>
+    </div>
+    <a href="{{ url_for('transaction_new') }}" class="btn btn-primary">+ Neue Buchung</a>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="field">
+        <label for="konto">Konto</label>
+        <select name="konto" id="konto">
+            <option value="">Alle Konten</option>
+            {% for a in accounts %}
+            <option value="{{ a.id }}" {{ 'selected' if f_konto == a.id }}>{{ a.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="field">
+        <label for="typ">Art</label>
+        <select name="typ" id="typ">
+            <option value="">Alle</option>
+            <option value="Einnahme" {{ 'selected' if f_typ == 'Einnahme' }}>Einnahme</option>
+            <option value="Ausgabe" {{ 'selected' if f_typ == 'Ausgabe' }}>Ausgabe</option>
+            <option value="Umbuchung" {{ 'selected' if f_typ == 'Umbuchung' }}>Umbuchung</option>
+        </select>
+    </div>
+    <div class="field">
+        <label for="von">Von</label>
+        <input type="date" name="von" id="von" value="{{ f_von }}">
+    </div>
+    <div class="field">
+        <label for="bis">Bis</label>
+        <input type="date" name="bis" id="bis" value="{{ f_bis }}">
+    </div>
+    <div class="field" style="min-width:200px;">
+        <label for="suche">Suche</label>
+        <input type="text" name="suche" id="suche" placeholder="Beschreibung durchsuchen…" value="{{ f_suche }}">
+    </div>
+    <button type="submit" class="btn">Filtern</button>
+    {% if f_konto or f_typ or f_von or f_bis or f_suche %}
+    <a href="{{ url_for('transactions_list') }}" class="btn btn-ghost">Zurücksetzen</a>
+    {% endif %}
+</form>
+
+{% if rows %}
+<div class="kpi-row" style="grid-template-columns: repeat(2, 1fr); margin-bottom:18px;">
+    <div class="kpi">
+        <span class="eyebrow">Summe Einnahmen (Filter)</span>
+        <span class="value positive">{{ summe_einnahmen | eur }}</span>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">Summe Ausgaben (Filter)</span>
+        <span class="value negative">{{ summe_ausgaben | eur }}</span>
+    </div>
+</div>
+
+<table class="ledger">
+    <thead>
+        <tr>
+            <th>Datum</th>
+            <th>Art</th>
+            <th>Konto</th>
+            <th>Kategorie</th>
+            <th>Beschreibung</th>
+            <th style="text-align:right;">Betrag</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for t in rows %}
+        <tr>
+            <td data-label="Datum">{{ t.date | de_date }}</td>
+            <td data-label="Art"><span class="pill {{ t.type }}">{{ t.type }}</span></td>
+            <td data-label="Konto">
+                {{ t.account_name }}
+                {% if t.type == 'Umbuchung' %}<span class="muted">→ {{ t.target_account_name }}</span>{% endif %}
+            </td>
+            <td data-label="Kategorie">{{ t.category_name or "–" }}</td>
+            <td data-label="Beschreibung">{{ t.description or "–" }}{% if t.item_count %} <span class="pill items-badge" title="{{ t.item_count }} Posten">🧾 {{ t.item_count }}</span>{% endif %}</td>
+            <td data-label="Betrag" class="amount {{ 'positive' if t.type == 'Einnahme' else ('negative' if t.type == 'Ausgabe' else 'transfer') }}">
+                {{ '+' if t.type == 'Einnahme' }}{{ '-' if t.type == 'Ausgabe' }}{{ t.amount | eur }}
+            </td>
+            <td data-label="">
+                <div style="display:flex; gap:4px; justify-content:flex-end;">
+                    <a href="{{ url_for('transaction_edit', tx_id=t.id) }}" class="btn btn-ghost" title="Bearbeiten">✎</a>
+                    <form class="inline" method="post" action="{{ url_for('transaction_delete', tx_id=t.id) }}"
+                          onsubmit="return confirm('Diese Buchung in den Papierkorb verschieben?');">
+                        <button type="submit" class="btn btn-ghost btn-danger" title="In Papierkorb verschieben">✕</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+    <span class="muted">Seite {{ page }} von {{ total_pages }} ({{ total }} Buchungen)</span>
+    <div class="pagination-links">
+        {% if page > 1 %}
+        <a href="{{ url_for('transactions_list', konto=f_konto, typ=f_typ, von=f_von, bis=f_bis, suche=f_suche, seite=page-1) }}" class="btn btn-ghost">← Zurück</a>
+        {% endif %}
+        {% if page < total_pages %}
+        <a href="{{ url_for('transactions_list', konto=f_konto, typ=f_typ, von=f_von, bis=f_bis, suche=f_suche, seite=page+1) }}" class="btn btn-ghost">Weiter →</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% else %}
+<div class="empty-state">Keine Buchungen für diese Filterauswahl.</div>
+{% endif %}
+
+{% endblock %}

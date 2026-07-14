@@ -1,0 +1,23 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# --- Lokale Datenbank (persönliche Daten) ---
+ausgaben.db
+
+# --- IDE ---
+.idea/
+
+# --- Claude Code (lokal) ---
+.claude/
+
+# --- Android: Build & lokale Configs ---
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/app/release/
+android/local.properties

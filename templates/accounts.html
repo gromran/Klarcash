@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Konten – Hauptbuch{% endblock %}
+{% block content %}
+
+<div class="actions-row">
+    <div>
+        <h1>Konten</h1>
+        <p class="subtitle" style="margin-bottom:0;">Girokonto, Bargeld und Anlagen im Überblick.</p>
+    </div>
+    <a href="{{ url_for('account_new') }}" class="btn btn-primary">+ Neues Konto</a>
+</div>
+
+{% if accounts %}
+<div class="account-grid">
+    {% for a in accounts %}
+    <div class="account-card {{ 'archived' if a.archived }}">
+        <span class="type-tag">{{ a.type }}</span>
+        <div class="name">{{ a.name }}</div>
+        <div class="balance {{ 'negative' if a.balance < 0 else '' }}">{{ a.balance | eur }}</div>
+        <form method="post" action="{{ url_for('account_archive', acc_id=a.id) }}" style="margin-top:12px;">
+            <button type="submit" class="btn btn-ghost" style="padding:4px 0;">
+                {{ 'Reaktivieren' if a.archived else 'Archivieren' }}
+            </button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">Noch keine Konten angelegt.</div>
+{% endif %}
+
+{% endblock %}

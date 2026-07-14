@@ -1,0 +1,505 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Buchung bearbeiten' if tx else 'Neue Buchung' }} – Hauptbuch{% endblock %}
+{% block content %}
+
+{# Kategorie-Auswahl ist zweistufig: ein Select fuer die Hauptkategorie, ein
+   zweites fuer die Unterkategorie. Beide werden per JS aus CATEGORY_TREE
+   befuellt. Abgeschickt wird weiterhin nur category_id bzw. item_category_id -
+   das Backend bleibt unveraendert. #}
+
+<h1>{{ 'Buchung bearbeiten' if tx else 'Neue Buchung' }}</h1>
+<p class="subtitle">Einnahme, Ausgabe oder Umbuchung zwischen Konten {{ 'anpassen' if tx else 'erfassen' }}.</p>
+
+<div class="form-card" style="max-width:680px;">
+<form method="post" id="tx-form" action="{{ url_for('transaction_edit', tx_id=tx.id) if tx else url_for('transaction_new') }}">
+
+    <div class="type-toggle">
+        <label data-kind="Einnahme">
+            <input type="radio" name="type" value="Einnahme" {{ 'checked' if form.get('type', 'Ausgabe') == 'Einnahme' }} onchange="toggleTarget()">
+            <span>Einnahme</span>
+        </label>
+        <label data-kind="Ausgabe">
+            <input type="radio" name="type" value="Ausgabe" {{ 'checked' if form.get('type', 'Ausgabe') == 'Ausgabe' }} onchange="toggleTarget()">
+            <span>Ausgabe</span>
+        </label>
+        <label data-kind="Umbuchung">
+            <input type="radio" name="type" value="Umbuchung" {{ 'checked' if form.get('type') == 'Umbuchung' }} onchange="toggleTarget()">
+            <span>Umbuchung</span>
+        </label>
+    </div>
+
+    <div class="field-row">
+        <div class="field">
+            <label for="date">Datum</label>
+            <input type="date" name="date" id="date" value="{{ form.get('date', today) }}" required>
+        </div>
+        <div class="field">
+            <label for="amount">Betrag (€)</label>
+            <input type="text" name="amount" id="amount" placeholder="0,00" value="{{ form.get('amount', '') }}" required>
+        </div>
+    </div>
+
+    <div class="field-row">
+        <div class="field">
+            <label for="account_id" id="account_label">Konto</label>
+            <select name="account_id" id="account_id" required>
+                <option value="">– wählen –</option>
+                {% for a in accounts %}
+                <option value="{{ a.id }}" {{ 'selected' if form.get('account_id')|string == a.id|string }}>{{ a.name }} ({{ a.type }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field" id="target-field">
+            <label for="target_account_id">Zielkonto</label>
+            <select name="target_account_id" id="target_account_id">
+                <option value="">– wählen –</option>
+                {% for a in accounts %}
+                <option value="{{ a.id }}" {{ 'selected' if form.get('target_account_id')|string == a.id|string }}>{{ a.name }} ({{ a.type }})</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="field-row" id="category-field">
+        <div class="field">
+            <label for="category_parent_id">Kategorie</label>
+            <select name="category_parent_id" id="category_parent_id"></select>
+        </div>
+        <div class="field">
+            <label for="category_id">Unterkategorie</label>
+            <div class="category-new-wrap">
+                <div class="category-child-row">
+                    <select name="category_id" id="category_id" data-selected="{{ form.get('category_id') or '' }}"></select>
+                    <button type="button" class="btn btn-ghost new-category-btn" title="Neue Kategorie anlegen">+</button>
+                </div>
+                <div class="new-category-inline" style="display:none;">
+                    <input type="text" class="new-category-input" placeholder="Neue Kategorie…">
+                    <button type="button" class="btn btn-ghost btn-sm new-category-confirm">Anlegen</button>
+                    <button type="button" class="btn btn-ghost btn-sm new-category-cancel">Abbrechen</button>
+                </div>
+                <div class="new-category-error" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="field">
+        <label for="description">Beschreibung</label>
+        <input type="text" name="description" id="description" placeholder="z. B. Wocheneinkauf Supermarkt" value="{{ form.get('description', '') }}">
+    </div>
+
+    <div class="field" id="items-toggle-field">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:500; color:var(--ink);">
+            <input type="checkbox" name="use_items" id="use_items_toggle" style="width:auto;" {{ 'checked' if items }} onchange="toggleItemsMode()">
+            🧾 In Posten aufteilen (Kassenzettel mit mehreren Artikeln)
+        </label>
+    </div>
+
+    <div id="items-section" style="display:none; margin-bottom:18px;">
+        <div class="items-table-wrap">
+            <table class="items-edit-table">
+                <thead>
+                    <tr><th>Beschreibung</th><th>Kategorie</th><th>Unterkategorie</th><th style="text-align:right;">Betrag (€)</th><th></th></tr>
+                </thead>
+                <tbody id="items-tbody">
+                    {% for item in items %}
+                    <tr>
+                        <td><input type="text" name="item_description" value="{{ item.description }}" placeholder="z. B. Vollkornbrot"></td>
+                        <td><select name="item_category_parent_id" class="item-category-parent-select"></select></td>
+                        <td>
+                            <div class="category-new-wrap">
+                                <div class="category-child-row">
+                                    <select name="item_category_id" class="item-category-select" data-selected="{{ item.category_id or '' }}"></select>
+                                    <button type="button" class="btn btn-ghost new-category-btn" title="Neue Kategorie anlegen">+</button>
+                                </div>
+                                <div class="new-category-inline" style="display:none;">
+                                    <input type="text" class="new-category-input" placeholder="Neue Kategorie…">
+                                    <button type="button" class="btn btn-ghost btn-sm new-category-confirm">Anlegen</button>
+                                    <button type="button" class="btn btn-ghost btn-sm new-category-cancel">Abbrechen</button>
+                                </div>
+                                <div class="new-category-error" style="display:none;"></div>
+                            </div>
+                        </td>
+                        <td><input type="text" name="item_amount" class="item-amount-input" value="{{ ('%.2f' % item.amount)|replace('.', ',') }}" placeholder="0,00" oninput="updateItemsTotal()"></td>
+                        <td><button type="button" class="btn btn-ghost btn-danger" onclick="this.closest('tr').remove(); updateItemsTotal();" title="Posten entfernen">✕</button></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="button" class="btn btn-ghost" onclick="addItemRow()" style="margin-top:8px;">+ Posten hinzufügen</button>
+            <div class="items-total">Summe der Posten: <strong id="items-total-value">0,00 €</strong></div>
+        </div>
+        <p class="muted" style="font-size:12.5px; margin-top:8px;">
+            Negative Beträge sind möglich (z. B. Pfandrückgabe). Die Summe aller Posten muss insgesamt größer als 0 sein und wird automatisch zum Buchungsbetrag.
+        </p>
+    </div>
+
+    <div class="actions-row" style="margin-bottom:0;">
+        <a href="{{ url_for('transactions_list') if tx else url_for('dashboard') }}" class="btn btn-ghost">Abbrechen</a>
+        <button type="submit" class="btn btn-primary">{{ 'Änderungen speichern' if tx else 'Buchung speichern' }}</button>
+    </div>
+</form>
+</div>
+
+<script>
+// Zweistufiger Kategoriebaum: [{id, name, kind, children: [{id, name, kind}]}]
+var CATEGORY_TREE = {{ categories|tojson }};
+var CATEGORY_CREATE_URL = {{ url_for('category_create_json')|tojson }};
+
+function currentType() {
+    return document.querySelector('input[name="type"]:checked').value;
+}
+
+function makeOption(value, label) {
+    var opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
+    return opt;
+}
+
+function parentById(id) {
+    for (var i = 0; i < CATEGORY_TREE.length; i++) {
+        if (String(CATEGORY_TREE[i].id) === String(id)) return CATEGORY_TREE[i];
+    }
+    return null;
+}
+
+// Zu einer gespeicherten category_id die zugehoerige Hauptkategorie finden -
+// die id kann selbst eine Haupt- oder eine Unterkategorie sein.
+function parentIdFor(categoryId) {
+    if (!categoryId) return '';
+    for (var i = 0; i < CATEGORY_TREE.length; i++) {
+        var parent = CATEGORY_TREE[i];
+        if (String(parent.id) === String(categoryId)) return String(parent.id);
+        for (var j = 0; j < parent.children.length; j++) {
+            if (String(parent.children[j].id) === String(categoryId)) return String(parent.id);
+        }
+    }
+    return '';
+}
+
+// Hauptkategorien passend zum Buchungstyp. Eine Auswahl, deren Art nicht mehr
+// passt, faellt automatisch auf "keine" zurueck (die Option existiert dann nicht).
+function buildParentOptions(parentSel, selectedParentId) {
+    var type = currentType();
+    parentSel.innerHTML = '';
+    parentSel.appendChild(makeOption('', '– keine –'));
+    CATEGORY_TREE.forEach(function(parent) {
+        if (parent.kind !== type) return;
+        parentSel.appendChild(makeOption(String(parent.id), parent.name));
+    });
+    parentSel.value = selectedParentId ? String(selectedParentId) : '';
+    if (parentSel.selectedIndex < 0) parentSel.value = '';
+}
+
+// Unterkategorien der gewaehlten Hauptkategorie. "– allgemein –" bucht direkt
+// auf die Hauptkategorie und traegt deren id als category_id ein, damit das
+// Backend weiterhin genau eine Kategorie-id erhaelt.
+// Wichtig: das Select nie disablen - sonst wuerde item_category_id fehlen und
+// die parallelen Listen in _parse_items() verschieben sich.
+function buildChildOptions(parentSel, childSel, selectedId) {
+    var parent = parentById(parentSel.value);
+    childSel.innerHTML = '';
+    if (!parent) {
+        childSel.appendChild(makeOption('', '– keine –'));
+        childSel.value = '';
+        return;
+    }
+    childSel.appendChild(makeOption(String(parent.id), '– allgemein –'));
+    parent.children.forEach(function(child) {
+        childSel.appendChild(makeOption(String(child.id), child.name));
+    });
+    childSel.value = selectedId ? String(selectedId) : String(parent.id);
+    if (childSel.selectedIndex < 0) childSel.value = String(parent.id);
+}
+
+function initCategoryPair(parentSel, childSel) {
+    var selectedId = childSel.dataset.selected || '';
+    buildParentOptions(parentSel, parentIdFor(selectedId));
+    buildChildOptions(parentSel, childSel, selectedId);
+    parentSel.addEventListener('change', function() {
+        buildChildOptions(parentSel, childSel, null);
+    });
+    attachNewCategoryUI(parentSel, childSel);
+}
+
+// Fuegt eine neu angelegte Kategorie ins gemeinsame CATEGORY_TREE ein, damit
+// alle Kategorie-Paare (Hauptfeld + Posten-Zeilen) sie sofort/spaeter sehen.
+function addCategoryToTree(cat) {
+    function byName(a, b) { return a.name.localeCompare(b.name, 'de'); }
+    if (cat.parent_id) {
+        var parent = parentById(cat.parent_id);
+        if (parent) {
+            parent.children.push({id: cat.id, name: cat.name, kind: cat.kind});
+            parent.children.sort(byName);
+        }
+    } else {
+        CATEGORY_TREE.push({id: cat.id, name: cat.name, kind: cat.kind, children: []});
+        CATEGORY_TREE.sort(byName);
+    }
+}
+
+// Haengt an ein Kategorie-Paar den "+"-Button samt Inline-Eingabe zum sofortigen
+// Anlegen einer fehlenden Kategorie per AJAX an (siehe /kategorien/neu.json).
+// Ist parentSel leer, entsteht eine neue Hauptkategorie; ist eine Hauptkategorie
+// gewaehlt, entsteht darunter eine Unterkategorie.
+function attachNewCategoryUI(parentSel, childSel) {
+    var wrap = childSel.closest('.category-new-wrap');
+    if (!wrap) return;
+
+    var btn = wrap.querySelector('.new-category-btn');
+    var inline = wrap.querySelector('.new-category-inline');
+    var input = wrap.querySelector('.new-category-input');
+    var confirmBtn = wrap.querySelector('.new-category-confirm');
+    var cancelBtn = wrap.querySelector('.new-category-cancel');
+    var errorBox = wrap.querySelector('.new-category-error');
+
+    function showError(msg) {
+        errorBox.textContent = msg;
+        errorBox.style.display = '';
+    }
+    function hideError() {
+        errorBox.style.display = 'none';
+        errorBox.textContent = '';
+    }
+    function openInline() {
+        inline.style.display = '';
+        hideError();
+        input.value = '';
+        input.focus();
+    }
+    function closeInline() {
+        inline.style.display = 'none';
+        hideError();
+    }
+
+    btn.addEventListener('click', openInline);
+    cancelBtn.addEventListener('click', closeInline);
+    input.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Enter') {
+            ev.preventDefault();
+            confirmBtn.click();
+        } else if (ev.key === 'Escape') {
+            closeInline();
+        }
+    });
+
+    confirmBtn.addEventListener('click', function() {
+        var name = input.value.trim();
+        if (!name) {
+            showError('Bitte einen Namen eingeben.');
+            return;
+        }
+
+        var parentId = parentSel.value || '';
+        var kind = currentType();
+        if (parentId) {
+            var parent = parentById(parentId);
+            if (parent) kind = parent.kind;
+        }
+
+        confirmBtn.disabled = true;
+        fetch(CATEGORY_CREATE_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({name: name, kind: kind, parent_id: parentId}),
+        })
+        .then(function(resp) {
+            return resp.json().then(function(data) { return data; });
+        })
+        .then(function(data) {
+            confirmBtn.disabled = false;
+            if (!data.ok) {
+                showError(data.error || 'Kategorie konnte nicht angelegt werden.');
+                return;
+            }
+            addCategoryToTree(data.category);
+            closeInline();
+
+            var newParentId = data.category.parent_id ? String(data.category.parent_id) : String(data.category.id);
+            buildParentOptions(parentSel, newParentId);
+            buildChildOptions(parentSel, childSel, String(data.category.id));
+
+            // Andere Kategorie-Paare (z. B. weitere Posten-Zeilen) bekommen die
+            // neue Hauptkategorie ebenfalls sofort zur Auswahl, ohne ihre
+            // aktuelle Auswahl zu verlieren.
+            categoryPairs().forEach(function(pair) {
+                if (pair[0] === parentSel) return;
+                buildParentOptions(pair[0], pair[0].value);
+            });
+        })
+        .catch(function() {
+            confirmBtn.disabled = false;
+            showError('Netzwerkfehler – bitte erneut versuchen.');
+        });
+    });
+}
+
+// Alle Kategorie-Paare des Formulars: das Hauptfeld plus je eines pro Posten-Zeile.
+function categoryPairs() {
+    var pairs = [[
+        document.getElementById('category_parent_id'),
+        document.getElementById('category_id'),
+    ]];
+    document.querySelectorAll('#items-tbody tr').forEach(function(tr) {
+        pairs.push([
+            tr.querySelector('.item-category-parent-select'),
+            tr.querySelector('.item-category-select'),
+        ]);
+    });
+    return pairs;
+}
+
+// Nach einem Typwechsel (Einnahme/Ausgabe) nur noch passende Hauptkategorien
+// anbieten; die bisherige Auswahl bleibt erhalten, wenn die Art weiterhin passt.
+function refreshCategoryKinds() {
+    categoryPairs().forEach(function(pair) {
+        var parentSel = pair[0], childSel = pair[1];
+        var keepChild = childSel.value;
+        buildParentOptions(parentSel, parentSel.value);
+        buildChildOptions(parentSel, childSel, parentSel.value ? keepChild : null);
+    });
+}
+
+function addItemRow(desc, amount, categoryId) {
+    var tbody = document.getElementById('items-tbody');
+    var tr = document.createElement('tr');
+
+    var descTd = document.createElement('td');
+    var descInput = document.createElement('input');
+    descInput.type = 'text';
+    descInput.name = 'item_description';
+    descInput.placeholder = 'z. B. Vollkornbrot';
+    descInput.value = desc || '';
+    descTd.appendChild(descInput);
+
+    var parentTd = document.createElement('td');
+    var parentSelect = document.createElement('select');
+    parentSelect.name = 'item_category_parent_id';
+    parentSelect.className = 'item-category-parent-select';
+    parentTd.appendChild(parentSelect);
+
+    var childTd = document.createElement('td');
+    childTd.innerHTML =
+        '<div class="category-new-wrap">' +
+            '<div class="category-child-row">' +
+                '<select name="item_category_id" class="item-category-select"></select>' +
+                '<button type="button" class="btn btn-ghost new-category-btn" title="Neue Kategorie anlegen">+</button>' +
+            '</div>' +
+            '<div class="new-category-inline" style="display:none;">' +
+                '<input type="text" class="new-category-input" placeholder="Neue Kategorie…">' +
+                '<button type="button" class="btn btn-ghost btn-sm new-category-confirm">Anlegen</button>' +
+                '<button type="button" class="btn btn-ghost btn-sm new-category-cancel">Abbrechen</button>' +
+            '</div>' +
+            '<div class="new-category-error" style="display:none;"></div>' +
+        '</div>';
+    var childSelect = childTd.querySelector('.item-category-select');
+    childSelect.dataset.selected = categoryId ? String(categoryId) : '';
+
+    var amountTd = document.createElement('td');
+    var amountInput = document.createElement('input');
+    amountInput.type = 'text';
+    amountInput.name = 'item_amount';
+    amountInput.placeholder = '0,00';
+    amountInput.className = 'item-amount-input';
+    amountInput.value = amount !== undefined ? amount : '';
+    amountInput.oninput = updateItemsTotal;
+    amountTd.appendChild(amountInput);
+
+    var removeTd = document.createElement('td');
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn btn-ghost btn-danger';
+    removeBtn.title = 'Posten entfernen';
+    removeBtn.textContent = '✕';
+    removeBtn.onclick = function() { tr.remove(); updateItemsTotal(); };
+    removeTd.appendChild(removeBtn);
+
+    tr.appendChild(descTd);
+    tr.appendChild(parentTd);
+    tr.appendChild(childTd);
+    tr.appendChild(amountTd);
+    tr.appendChild(removeTd);
+    tbody.appendChild(tr);
+
+    initCategoryPair(parentSelect, childSelect);
+    updateItemsTotal();
+}
+
+function updateItemsTotal() {
+    var inputs = document.querySelectorAll('.item-amount-input');
+    var sum = 0;
+    inputs.forEach(function(inp) {
+        var v = parseFloat((inp.value || '0').replace(',', '.'));
+        if (!isNaN(v)) sum += v;
+    });
+    document.getElementById('items-total-value').textContent =
+        sum.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €';
+    if (document.getElementById('use_items_toggle').checked) {
+        document.getElementById('amount').value = sum.toFixed(2).replace('.', ',');
+    }
+}
+
+function toggleItemsMode() {
+    var on = document.getElementById('use_items_toggle').checked;
+    document.getElementById('items-section').style.display = on ? '' : 'none';
+    document.getElementById('amount').readOnly = on;
+    if (on) {
+        document.getElementById('category-field').style.display = 'none';
+        if (document.getElementById('items-tbody').children.length === 0) {
+            addItemRow();
+        }
+        refreshCategoryKinds();
+        updateItemsTotal();
+    } else {
+        var type = currentType();
+        if (type !== 'Umbuchung') {
+            document.getElementById('category-field').style.display = '';
+        }
+    }
+}
+
+function toggleTarget() {
+    var type = currentType();
+    var targetField = document.getElementById('target-field');
+    var categoryField = document.getElementById('category-field');
+    var accountLabel = document.getElementById('account_label');
+    var itemsToggleField = document.getElementById('items-toggle-field');
+    var itemsToggle = document.getElementById('use_items_toggle');
+
+    if (type === 'Umbuchung') {
+        targetField.style.display = '';
+        categoryField.style.display = 'none';
+        accountLabel.textContent = 'Von Konto';
+        itemsToggleField.style.display = 'none';
+        if (itemsToggle.checked) {
+            itemsToggle.checked = false;
+            toggleItemsMode();
+        }
+    } else {
+        targetField.style.display = 'none';
+        accountLabel.textContent = 'Konto';
+        itemsToggleField.style.display = '';
+        refreshCategoryKinds();
+        categoryField.style.display = itemsToggle.checked ? 'none' : '';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initCategoryPair(
+        document.getElementById('category_parent_id'),
+        document.getElementById('category_id')
+    );
+    document.querySelectorAll('#items-tbody tr').forEach(function(tr) {
+        initCategoryPair(
+            tr.querySelector('.item-category-parent-select'),
+            tr.querySelector('.item-category-select')
+        );
+    });
+    toggleTarget();
+    if (document.getElementById('use_items_toggle').checked) {
+        toggleItemsMode();
+    }
+});
+</script>
+
+{% endblock %}

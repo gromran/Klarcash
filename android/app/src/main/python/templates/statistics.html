@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}Statistiken – Hauptbuch{% endblock %}
+
+{% block extra_head %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="actions-row">
+    <div>
+        <h1>Statistiken</h1>
+        <p class="subtitle" style="margin-bottom:0;">Entwicklung deiner Finanzen im Überblick.</p>
+    </div>
+    <form method="get" class="field" style="margin-bottom:0; min-width:200px;">
+        <select name="zeitraum" onchange="this.form.submit()">
+            {% for key, p in periods.items() %}
+            <option value="{{ key }}" {{ 'selected' if key == period }}>{{ p.label }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="kpi-row" style="grid-template-columns: repeat(3, 1fr);">
+    <div class="kpi">
+        <span class="eyebrow">Einnahmen im Zeitraum</span>
+        <span class="value positive">{{ summe_einnahmen | eur }}</span>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">Ausgaben im Zeitraum</span>
+        <span class="value negative">{{ summe_ausgaben | eur }}</span>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">Saldo im Zeitraum</span>
+        <span class="value {{ 'positive' if summe_einnahmen - summe_ausgaben >= 0 else 'negative' }}">
+            {{ (summe_einnahmen - summe_ausgaben) | eur }}
+        </span>
+    </div>
+</div>
+
+<h2>Einnahmen &amp; Ausgaben je Monat</h2>
+{% if monthly_labels %}
+<div class="chart-card">
+    <canvas id="monthlyChart" height="90"></canvas>
+</div>
+{% else %}
+<div class="empty-state">Für diesen Zeitraum liegen noch keine Buchungen vor.</div>
+{% endif %}
+
+<h2>Vermögensentwicklung</h2>
+{% if vermoegen_werte|length > 1 %}
+<div class="chart-card">
+    <canvas id="netWorthChart" height="80"></canvas>
+</div>
+{% else %}
+<div class="empty-state">Sobald Buchungen vorliegen, siehst du hier die Entwicklung deines Gesamtbestands.</div>
+{% endif %}
+
+<div class="stats-grid">
+    <div>
+        <h2>Ausgaben nach Kategorie</h2>
+        {% if ausgaben_liste %}
+        <div class="chart-card chart-card--donut">
+            <canvas id="ausgabenChart"></canvas>
+        </div>
+        <table class="ledger cat-table">
+            <tbody>
+                {% for c in ausgaben_liste %}
+                <tr>
+                    <td class="cat-swatch"><span class="dot" style="background:{{ palette[loop.index0 % palette|length] }}"></span>{{ c.name }}</td>
+                    <td class="cat-bar"><div class="bar-track"><div class="bar-fill" style="width:{{ c.anteil }}%; background:{{ palette[loop.index0 % palette|length] }}"></div></div></td>
+                    <td class="amount negative">{{ c.summe | eur }}</td>
+                    <td class="amount muted" style="width:52px;">{{ '%.0f'|format(c.anteil) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">Keine Ausgaben in diesem Zeitraum.</div>
+        {% endif %}
+    </div>
+
+    <div>
+        <h2>Einnahmen nach Kategorie</h2>
+        {% if einnahmen_liste %}
+        <div class="chart-card chart-card--donut">
+            <canvas id="einnahmenChart"></canvas>
+        </div>
+        <table class="ledger cat-table">
+            <tbody>
+                {% for c in einnahmen_liste %}
+                <tr>
+                    <td class="cat-swatch"><span class="dot" style="background:{{ palette[loop.index0 % palette|length] }}"></span>{{ c.name }}</td>
+                    <td class="cat-bar"><div class="bar-track"><div class="bar-fill" style="width:{{ c.anteil }}%; background:{{ palette[loop.index0 % palette|length] }}"></div></div></td>
+                    <td class="amount positive">{{ c.summe | eur }}</td>
+                    <td class="amount muted" style="width:52px;">{{ '%.0f'|format(c.anteil) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">Keine Einnahmen in diesem Zeitraum.</div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const CHART_FONT = "'Inter', sans-serif";
+const MONO_FONT = "'IBM Plex Mono', monospace";
+const GRID_COLOR = "#E1DED4";
+const INK = "#1C2321";
+const INK_SOFT = "#5B655F";
+const PALETTE = {{ palette | tojson }};
+
+Chart.defaults.font.family = CHART_FONT;
+Chart.defaults.color = INK_SOFT;
+
+{% if monthly_labels %}
+new Chart(document.getElementById('monthlyChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ monthly_labels | tojson }},
+        datasets: [
+            {
+                label: 'Einnahmen',
+                data: {{ monthly_einnahmen | tojson }},
+                backgroundColor: '#2E7D5B',
+                borderRadius: 3,
+                maxBarThickness: 26,
+            },
+            {
+                label: 'Ausgaben',
+                data: {{ monthly_ausgaben | tojson }},
+                backgroundColor: '#B24C3A',
+                borderRadius: 3,
+                maxBarThickness: 26,
+            },
+        ],
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8 } },
+            tooltip: {
+                callbacks: {
+                    label: (ctx) => ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString('de-DE', {style:'currency', currency:'EUR'}),
+                },
+            },
+        },
+        scales: {
+            x: { grid: { display: false } },
+            y: {
+                grid: { color: GRID_COLOR },
+                ticks: { font: { family: MONO_FONT, size: 11 }, callback: (v) => v.toLocaleString('de-DE') + ' €' },
+            },
+        },
+    },
+});
+{% endif %}
+
+{% if vermoegen_werte|length > 1 %}
+new Chart(document.getElementById('netWorthChart'), {
+    type: 'line',
+    data: {
+        labels: {{ vermoegen_labels | tojson }},
+        datasets: [{
+            label: 'Gesamtbestand',
+            data: {{ vermoegen_werte | tojson }},
+            borderColor: '#1F5F5B',
+            backgroundColor: 'rgba(31,95,91,0.08)',
+            fill: true,
+            tension: 0.25,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            borderWidth: 2,
+        }],
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: (ctx) => ctx.parsed.y.toLocaleString('de-DE', {style:'currency', currency:'EUR'}),
+                },
+            },
+        },
+        scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
+            y: {
+                grid: { color: GRID_COLOR },
+                ticks: { font: { family: MONO_FONT, size: 11 }, callback: (v) => v.toLocaleString('de-DE') + ' €' },
+            },
+        },
+    },
+});
+{% endif %}
+
+function buildDonut(canvasId, labels, data) {
+    const el = document.getElementById(canvasId);
+    if (!el) return;
+    new Chart(el, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{ data: data, backgroundColor: PALETTE, borderColor: '#FFFFFF', borderWidth: 2 }],
+        },
+        options: {
+            responsive: true,
+            cutout: '68%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => ctx.label + ': ' + ctx.parsed.toLocaleString('de-DE', {style:'currency', currency:'EUR'}),
+                    },
+                },
+            },
+        },
+    });
+}
+
+{% if ausgaben_liste %}
+buildDonut('ausgabenChart', {{ ausgaben_liste | map(attribute='name') | list | tojson }}, {{ ausgaben_liste | map(attribute='summe') | list | tojson }});
+{% endif %}
+{% if einnahmen_liste %}
+buildDonut('einnahmenChart', {{ einnahmen_liste | map(attribute='name') | list | tojson }}, {{ einnahmen_liste | map(attribute='summe') | list | tojson }});
+{% endif %}
+</script>
+{% endblock %}

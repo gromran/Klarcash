@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Kategorie bearbeiten – Hauptbuch{% endblock %}
+{% block content %}
+
+<h1>Kategorie bearbeiten</h1>
+<p class="subtitle">Name, Art oder übergeordnete Kategorie anpassen.</p>
+
+<div class="form-card">
+<form method="post">
+    <div class="type-toggle">
+        <label data-kind="Einnahme">
+            <input type="radio" name="kind" value="Einnahme" {{ 'checked' if form.get('kind') == 'Einnahme' }} onchange="filterParents()">
+            <span>Einnahme</span>
+        </label>
+        <label data-kind="Ausgabe">
+            <input type="radio" name="kind" value="Ausgabe" {{ 'checked' if form.get('kind', 'Ausgabe') == 'Ausgabe' }} onchange="filterParents()">
+            <span>Ausgabe</span>
+        </label>
+    </div>
+
+    <div class="field">
+        <label for="name">Name</label>
+        <input type="text" name="name" id="name" value="{{ form.get('name', '') }}" required>
+    </div>
+
+    <div class="field">
+        <label for="parent_id">Übergeordnete Kategorie (optional)</label>
+        <select name="parent_id" id="parent_id" {{ 'disabled' if cat.parent_id is none and hat_kinder }}>
+            <option value="">– keine (Hauptkategorie) –</option>
+            {% for p in hauptkategorien %}
+            <option value="{{ p.id }}" data-kind="{{ p.kind }}" {{ 'selected' if form.get('parent_id')|string == p.id|string }}>{{ p.name }}</option>
+            {% endfor %}
+        </select>
+        {% if cat.parent_id is none and hat_kinder %}
+        <p class="muted" style="font-size:12.5px; margin-top:6px;">
+            Diese Kategorie hat eigene Unterkategorien und kann daher nicht selbst zu einer Unterkategorie werden.
+        </p>
+        {% endif %}
+    </div>
+
+    <div class="actions-row" style="margin-bottom:0;">
+        <a href="{{ url_for('categories_view') }}" class="btn btn-ghost">Abbrechen</a>
+        <button type="submit" class="btn btn-primary">Änderungen speichern</button>
+    </div>
+</form>
+</div>
+
+<script>
+function filterParents() {
+    var kind = document.querySelector('input[name="kind"]:checked').value;
+    var select = document.getElementById('parent_id');
+    Array.from(select.options).forEach(function(opt) {
+        if (!opt.dataset.kind) return;
+        opt.hidden = opt.dataset.kind !== kind;
+        if (opt.hidden && opt.selected) select.value = "";
+    });
+}
+document.addEventListener('DOMContentLoaded', filterParents);
+</script>
+
+{% endblock %}

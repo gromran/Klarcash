@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Übersicht – Hauptbuch{% endblock %}
+{% block content %}
+
+<h1>Übersicht</h1>
+<p class="subtitle">Stand deiner Konten und Buchungen dieses Monats.</p>
+
+<div class="kpi-row">
+    <div class="kpi">
+        <span class="eyebrow">Gesamtbestand</span>
+        <span class="value">{{ gesamt | eur }}</span>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">Einnahmen ({{ monat_name }})</span>
+        <span class="value positive">{{ monat_einnahmen | eur }}</span>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">Ausgaben ({{ monat_name }})</span>
+        <span class="value negative">{{ monat_ausgaben | eur }}</span>
+    </div>
+    <div class="kpi">
+        <span class="eyebrow">Saldo ({{ monat_name }})</span>
+        <span class="value {{ 'positive' if monat_saldo >= 0 else 'negative' }}">{{ monat_saldo | eur }}</span>
+    </div>
+</div>
+
+<h2>Konten</h2>
+{% if accounts %}
+<div class="account-grid">
+    {% for a in accounts %}
+    <div class="account-card">
+        <span class="type-tag">{{ a.type }}</span>
+        <div class="name">{{ a.name }}</div>
+        <div class="balance {{ 'negative' if a.balance < 0 else '' }}">{{ a.balance | eur }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">Noch keine Konten angelegt. <a href="{{ url_for('account_new') }}" style="color:var(--brand); font-weight:600;">Jetzt anlegen →</a></div>
+{% endif %}
+
+<div class="actions-row">
+    <h2 style="margin:0;">Letzte Buchungen</h2>
+    <a href="{{ url_for('transactions_list') }}" class="btn btn-ghost">Alle anzeigen →</a>
+</div>
+
+{% if recent %}
+<table class="ledger">
+    <thead>
+        <tr>
+            <th>Datum</th>
+            <th>Konto</th>
+            <th>Kategorie</th>
+            <th>Beschreibung</th>
+            <th style="text-align:right;">Betrag</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for t in recent %}
+        <tr>
+            <td data-label="Datum">{{ t.date | de_date }}</td>
+            <td data-label="Konto">
+                {{ t.account_name }}
+                {% if t.type == 'Umbuchung' %}<span class="muted">→ {{ t.target_account_name }}</span>{% endif %}
+            </td>
+            <td data-label="Kategorie">
+                {% if t.category_name %}{{ t.category_name }}{% else %}<span class="pill {{ t.type }}">{{ t.type }}</span>{% endif %}
+            </td>
+            <td data-label="Beschreibung">{{ t.description or "–" }}{% if t.item_count %} <a href="{{ url_for('transaction_edit', tx_id=t.id) }}" class="pill items-badge" title="Buchung mit Posten aufgeteilt">🧾 {{ t.item_count }}</a>{% endif %}</td>
+            <td data-label="Betrag" class="amount {{ 'positive' if t.type == 'Einnahme' else ('negative' if t.type == 'Ausgabe' else 'transfer') }}">
+                {{ '+' if t.type == 'Einnahme' }}{{ '-' if t.type == 'Ausgabe' }}{{ t.amount | eur }}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">Noch keine Buchungen erfasst. <a href="{{ url_for('transaction_new') }}" style="color:var(--brand); font-weight:600;">Erste Buchung anlegen →</a></div>
+{% endif %}
+
+{% endblock %}

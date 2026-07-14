@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Kategorien – Hauptbuch{% endblock %}
+{% block content %}
+
+{% macro category_table(kategorien, empty_text) %}
+    {% if kategorien %}
+    <table class="ledger">
+        <tbody>
+            {% for p in kategorien %}
+            <tr>
+                <td>{{ p.name }}</td>
+                <td style="width:90px;">
+                    <div style="display:flex; gap:4px; justify-content:flex-end;">
+                        <a href="{{ url_for('category_edit', cat_id=p.id) }}" class="btn btn-ghost" title="Bearbeiten">✎</a>
+                        <form class="inline" method="post" action="{{ url_for('category_delete', cat_id=p.id) }}"
+                              onsubmit="return confirm('Kategorie „{{ p.name }}“ wirklich löschen?');">
+                            <button type="submit" class="btn btn-ghost btn-danger" title="Löschen">✕</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% for c in p.children %}
+            <tr>
+                <td class="muted" style="padding-left:26px;">↳ {{ c.name }}</td>
+                <td>
+                    <div style="display:flex; gap:4px; justify-content:flex-end;">
+                        <a href="{{ url_for('category_edit', cat_id=c.id) }}" class="btn btn-ghost" title="Bearbeiten">✎</a>
+                        <form class="inline" method="post" action="{{ url_for('category_delete', cat_id=c.id) }}"
+                              onsubmit="return confirm('Kategorie „{{ c.name }}“ wirklich löschen?');">
+                            <button type="submit" class="btn btn-ghost btn-danger" title="Löschen">✕</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">{{ empty_text }}</div>
+    {% endif %}
+{% endmacro %}
+
+<h1>Kategorien</h1>
+<p class="subtitle">Ordne Einnahmen und Ausgaben eigenen Kategorien zu – bei Bedarf auch mit Unterkategorien (z. B. Lebensmittel → Brot).</p>
+
+<div class="form-card" style="margin-bottom:32px;">
+<form method="post">
+    <div class="type-toggle">
+        <label data-kind="Einnahme">
+            <input type="radio" name="kind" value="Einnahme" checked onchange="filterParents()">
+            <span>Einnahme</span>
+        </label>
+        <label data-kind="Ausgabe">
+            <input type="radio" name="kind" value="Ausgabe" onchange="filterParents()">
+            <span>Ausgabe</span>
+        </label>
+    </div>
+
+    <div class="field-row">
+        <div class="field">
+            <label for="name">Name</label>
+            <input type="text" name="name" id="name" placeholder="z. B. Brot" required>
+        </div>
+        <div class="field">
+            <label for="parent_id">Übergeordnete Kategorie (optional)</label>
+            <select name="parent_id" id="parent_id">
+                <option value="">– keine (Hauptkategorie) –</option>
+                {% for p in hauptkategorien %}
+                <option value="{{ p.id }}" data-kind="{{ p.kind }}">{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Kategorie anlegen</button>
+</form>
+</div>
+
+<div class="stats-grid">
+    <div>
+        <h2>Ausgaben-Kategorien</h2>
+        {{ category_table(ausgaben_kategorien, "Noch keine Ausgaben-Kategorien angelegt.") }}
+    </div>
+
+    <div>
+        <h2>Einnahmen-Kategorien</h2>
+        {{ category_table(einnahmen_kategorien, "Noch keine Einnahmen-Kategorien angelegt.") }}
+    </div>
+</div>
+
+<script>
+function filterParents() {
+    var kind = document.querySelector('input[name="kind"]:checked').value;
+    var select = document.getElementById('parent_id');
+    Array.from(select.options).forEach(function(opt) {
+        if (!opt.dataset.kind) return; // die "keine"-Option immer sichtbar lassen
+        opt.hidden = opt.dataset.kind !== kind;
+        if (opt.hidden && opt.selected) select.value = "";
+    });
+}
+document.addEventListener('DOMContentLoaded', filterParents);
+</script>
+
+{% endblock %}

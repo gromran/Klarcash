@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Ausgabenverwaltung{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle-input">
+<div class="layout">
+    <header class="topbar">
+        <a href="{{ url_for('dashboard') }}" class="brand">
+            <span class="brand-mark">§</span>
+            <span class="brand-name">Hauptbuch</span>
+        </a>
+        <label for="nav-toggle" class="nav-burger" aria-label="Menü öffnen">☰</label>
+    </header>
+    <label for="nav-toggle" class="nav-backdrop"></label>
+
+    <aside class="sidebar">
+        <a href="{{ url_for('dashboard') }}" class="brand">
+            <span class="brand-mark">§</span>
+            <span class="brand-name">Hauptbuch</span>
+        </a>
+        <nav class="nav">
+            <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">Übersicht</a>
+            <a href="{{ url_for('transactions_list') }}" class="{{ 'active' if request.endpoint in ['transactions_list'] }}">Buchungen</a>
+            <a href="{{ url_for('statistics') }}" class="{{ 'active' if request.endpoint == 'statistics' }}">Statistiken</a>
+            <a href="{{ url_for('reports') }}" class="{{ 'active' if request.endpoint in ['reports', 'reports_export'] }}">Berichte</a>
+            <a href="{{ url_for('accounts_overview') }}" class="{{ 'active' if request.endpoint in ['accounts_overview','account_new'] }}">Konten</a>
+            <a href="{{ url_for('categories_view') }}" class="{{ 'active' if request.endpoint == 'categories_view' }}">Kategorien</a>
+            <a href="{{ url_for('trash') }}" class="{{ 'active' if request.endpoint == 'trash' }}">Papierkorb</a>
+        </nav>
+        <a href="{{ url_for('transaction_new') }}" class="btn btn-primary sidebar-cta">+ Neue Buchung</a>
+    </aside>
+
+    <main class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

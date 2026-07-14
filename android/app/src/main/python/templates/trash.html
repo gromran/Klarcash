@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Papierkorb – Hauptbuch{% endblock %}
+{% block content %}
+
+<h1>Papierkorb</h1>
+<p class="subtitle">Gelöschte Buchungen lassen sich wiederherstellen oder endgültig entfernen.</p>
+
+{% if rows %}
+<table class="ledger">
+    <thead>
+        <tr>
+            <th>Datum</th>
+            <th>Art</th>
+            <th>Konto</th>
+            <th>Kategorie</th>
+            <th>Beschreibung</th>
+            <th style="text-align:right;">Betrag</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for t in rows %}
+        <tr>
+            <td data-label="Datum">{{ t.date | de_date }}</td>
+            <td data-label="Art"><span class="pill {{ t.type }}">{{ t.type }}</span></td>
+            <td data-label="Konto">
+                {{ t.account_name }}
+                {% if t.type == 'Umbuchung' %}<span class="muted">→ {{ t.target_account_name }}</span>{% endif %}
+            </td>
+            <td data-label="Kategorie">{{ t.category_name or "–" }}</td>
+            <td data-label="Beschreibung">{{ t.description or "–" }}</td>
+            <td data-label="Betrag" class="amount {{ 'positive' if t.type == 'Einnahme' else ('negative' if t.type == 'Ausgabe' else 'transfer') }}">
+                {{ '+' if t.type == 'Einnahme' }}{{ '-' if t.type == 'Ausgabe' }}{{ t.amount | eur }}
+            </td>
+            <td data-label="">
+                <div style="display:flex; gap:4px; justify-content:flex-end;">
+                    <form class="inline" method="post" action="{{ url_for('transaction_restore', tx_id=t.id) }}">
+                        <button type="submit" class="btn btn-ghost" title="Wiederherstellen">↺ Wiederherstellen</button>
+                    </form>
+                    <form class="inline" method="post" action="{{ url_for('transaction_purge', tx_id=t.id) }}"
+                          onsubmit="return confirm('Diese Buchung unwiderruflich endgültig löschen?');">
+                        <button type="submit" class="btn btn-ghost btn-danger" title="Endgültig löschen">Endgültig löschen</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">Der Papierkorb ist leer.</div>
+{% endif %}
+
+{% endblock %}
