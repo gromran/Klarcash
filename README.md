@@ -88,6 +88,58 @@ tests/               pytest-Suite
 ausgaben.db          SQLite-Datenbank (wird beim ersten Start erzeugt)
 ```
 
+## Android-App
+
+Der Unterordner `android/` bettet denselben Flask-Server per
+[Chaquopy](https://chaquo.com/chaquopy/) in eine installierbare APK ein; eine
+WebView zeigt `http://127.0.0.1:5000/`. Kein Remote-Server beteiligt, keine
+zweite Codebasis: `app.py`, `db.py`, `templates/` und `static/` bleiben allein
+im Projekt-Root gepflegt und werden vor jedem Android-Build automatisch nach
+`android/app/src/main/python/` kopiert (Gradle-Task `copyPythonSources`).
+
+### Voraussetzungen
+
+- JDK 17.
+- Android SDK (Platform 34 + Build-Tools), z. B. über Android Studio oder die
+  cmdline-tools installiert. Der Pfad steht in `android/local.properties`
+  (`sdk.dir`, nicht versioniert) – bei Bedarf selbst anlegen.
+- Lokales CPython **3.13** für Chaquopys `buildPython`. Der Pfad dazu ist in
+  `android/app/build.gradle.kts` (`buildPython("…/python.exe")`) aktuell fest
+  auf die Entwicklermaschine gesetzt und muss ggf. auf die eigene
+  Installation angepasst werden.
+
+### Bauen
+
+Der Gradle-Wrapper ist im Repo enthalten, ein separates Gradle-Setup ist
+nicht nötig:
+
+```bash
+cd android
+# Windows:
+gradlew.bat assembleDebug
+# Linux/macOS:
+./gradlew assembleDebug
+```
+
+Ergebnis: `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+Für einen Release-Build `assembleRelease` verwenden; die Ausgabe
+(`app-release-unsigned.apk`) ist unsigniert und muss vor einer Verteilung
+noch selbst signiert werden (z. B. mit `apksigner` und einem eigenen
+Keystore).
+
+### Installieren
+
+Mit angeschlossenem Gerät oder laufendem Emulator:
+
+```bash
+gradlew.bat installDebug
+# alternativ direkt per adb:
+adb install app/build/outputs/apk/debug/app-debug.apk
+```
+
+Details zur Projektstruktur und offene Punkte siehe `android/README.md`.
+
 ## Tests
 
 ```bash
