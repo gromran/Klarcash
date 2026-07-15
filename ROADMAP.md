@@ -1,19 +1,19 @@
 # Roadmap
 
-Hauptbuch ist heute bewusst einfach gehalten: eine Single-User-App mit
-flachem `app.py` + `db.py`, rohem `sqlite3` (kein ORM), ohne Anmeldung und
-ohne Konfigurationsschicht. Diese Roadmap beschreibt die vier nächsten
+Hauptbuch startete als bewusst einfache Single-User-App mit flachem
+`app.py` + `db.py`, rohem `sqlite3` (kein ORM), ohne Anmeldung und ohne
+Konfigurationsschicht. Seit Version 2.0.0 ist die **Nutzerverwaltung**
+umgesetzt (siehe Punkt 2 unten) - diese Roadmap beschreibt die verbleibenden
 Ausbaustufen. Details zur bestehenden Architektur stehen in `PROJECT.md`,
 inklusive des Abschnitts "bewusst nicht umgesetzte Punkte", aus dem einige
 der hier genannten Ideen stammen.
 
-Empfohlene Reihenfolge: **Settings-Tab → Nutzerverwaltung → Remote DB / Sync →
-Ersteinrichtung**, weil der Settings-Tab die aktuell fehlende Konfigurations-/
-Persistenzschicht schafft, auf der die anderen Features aufbauen, Remote
-DB/Sync von einer funktionierenden Nutzerverwaltung profitiert
-(Eigentümer-/Konfliktbasis), und die Ersteinrichtung als abschließender
-Onboarding-Flow beide vorherigen Features (Nutzerverwaltung, Remote DB/Sync)
-voraussetzt.
+Ursprünglich vorgesehene Reihenfolge war Settings-Tab → Nutzerverwaltung →
+Remote DB / Sync → Ersteinrichtung. Tatsächlich wurden zuerst **Nutzerver-
+waltung** und eine **einfache Ersteinrichtung** umgesetzt (ohne die
+Remote-DB/Sync-Wahl aus Punkt 4, da Punkt 3 noch nicht existiert) - der
+Settings-Tab bleibt offen und ist weiterhin ein guter naechster Schritt,
+bevor Remote DB / Sync sinnvoll angegangen werden kann.
 
 ## 1. Settings-Tab
 
@@ -21,47 +21,59 @@ voraussetzt.
 Persistenz-/Konfigurationsschicht der App schafft.
 
 **Betroffen:**
-- Neuer Nav-Eintrag in `templates/base.html` (Nav-Liste, ca. Zeile 30-38)
+- Neuer Nav-Eintrag in `templates/base.html`
 - Neue Route in `app.py`
 - Neues Template `templates/einstellungen.html`
-- Neue Key/Value-Tabelle `settings` in `db.py` (`SCHEMA` + `_migrate()`)
+- Neue Key/Value-Tabelle `settings` in `db.py` (`SCHEMA` + `_migrate()`,
+  Major-Bump auf 3.0.0), je Nutzer scopen (`user_id`-Spalte, wie die
+  Nutzerverwaltung es für `accounts`/`categories`/`transactions` vorgemacht
+  hat)
 - Getter/Setter-Helfer in `db.py`
 
-**Erste Inhalte:** `PAGE_SIZE` (heute hart in `db.py:73`), Standard-Zeitraum
-für die Statistik, evtl. der `--online`-Warnhinweis. Später Andockpunkt für
+**Erste Inhalte:** `PAGE_SIZE` (heute hart in `db.py`), Standard-Zeitraum
+für die Statistik, evtl. der `--online`-Warnhinweis (heute noch als reiner
+CLI-Hinweis in `app.py`, siehe `--online`-Flag). Später Andockpunkt für
 Backup/Export.
 
 **Tests:** neue Route in `GET_ROUTEN` (`tests/test_routes_smoke.py`),
 Migrationstest (`tests/test_migration.py`).
 
-## 2. Nutzerverwaltung
+## 2. Nutzerverwaltung ✅ umgesetzt (Version 2.0.0)
 
-**Ziel:** Mehrbenutzerfähigkeit + Login. Hebt die "keine Anmeldung"-Warnung
-auf und macht den `--online`-Betrieb (LAN-Zugriff) absicherbar.
+**Ziel:** Mehrbenutzerfähigkeit + Login. Hebt die frühere "keine
+Anmeldung"-Warnung auf und macht den `--online`-Betrieb (LAN-Zugriff)
+absicherbar.
 
-**Betroffen (greenfield, da bisher nichts existiert):**
-- Neue `users`-Tabelle, Passwort-Hash via bereits vorhandenem Werkzeug
-  (`generate_password_hash`)
-- Echter `app.secret_key` (heute `"dev-only-change-me"`, `app.py:22`)
-- Session/Login-Mechanismus — Entscheidung zwischen Flask-Bordmitteln und
-  einer neuen Abhängigkeit wie flask-login (kollidiert mit der bisherigen
-  "Flask-only, keine Extra-Deps"-Philosophie)
-- `@login_required` auf allen bestehenden Routen
-- Login-/Logout-/Registrierungs-Templates
-- Nutzerverwaltung als Unterseite im Settings-Tab
+**Umgesetzt:**
+- `users`-Tabelle (`username`, `password_hash`, `role`), Passwort-Hash via
+  Werkzeug (`generate_password_hash`/`check_password_hash` - keine neue
+  Abhängigkeit)
+- Echter, persistenter `app.secret_key` (`.secret_key`-Datei neben der DB,
+  gitignored)
+- Session-basierter Login über Flask-Bordmittel (kein flask-login) -
+  `_require_setup`/`_require_login` als `before_request`-Gates in `app.py`
+- Routen `/login`, `/logout`, `/ersteinrichtung` (siehe Punkt 4),
+  `/nutzer`, `/nutzer/neu`, `/nutzer/<id>/loeschen` (Admin-only via
+  `admin_required`-Decorator), `/profil` (Passwort ändern)
+- Datenmodell: `user_id`-FK an `accounts`, `categories`, `transactions`
+  (`transaction_items` erbt implizit über `transaction_id`);
+  `categories.name` ist seither nur je Nutzer eindeutig
+  (`UNIQUE(user_id, name)` statt `UNIQUE(name)`) - der dafür nötige
+  SQLite-Tabellen-Rebuild steckt in `db.py:_migrate()`
+- Alle bestehenden Routen und Query-Helfer in `db.py` sind auf `user_id`
+  gescoped, inkl. IDOR-Schutz bei `<int:id>`-Routen und Formularfeldern
+  (`_validate_transaction_ownership`, `_validate_items_ownership`)
+- `APP_VERSION` auf `2.0.0` gehoben (Major-Bump)
 
-**Datenmodell:** `user_id`-FK an `accounts`, `categories`, `transactions`
-(`transaction_items` erbt darüber implizit). Anpassung aller Queries,
-inklusive `FLATTENED_CTE` (`db.py:81`), sowie Erweiterung von `_migrate()`.
-
-**Hinweis:** größter Einzeleingriff im Projekt, da die Annahme "alle Daten
-sind global" aktuell überall verdrahtet ist (Salden, Kategorien, Statistiken,
-Export).
+**Nicht umgesetzt / bewusst ausgelassen:** kein separater Settings-Tab
+(Punkt 1) als Unterbau - die Nutzerverwaltung lebt als eigenständige
+Routengruppe; kann bei Bedarf später dorthin verschoben werden.
 
 ## 3. Remote DB / Sync
 
 **Ziel:** Daten geräteübergreifend verfügbar machen (Desktop ↔ die
-Android-WebView-App in `android/`).
+Android-WebView-App in `android/`, deren `app.py`/`db.py` per Gradle-Task
+`copyPythonSources` automatisch aus dem Projekt-Root übernommen werden).
 
 Zwei mögliche Richtungen:
 
@@ -71,45 +83,36 @@ Zwei mögliche Richtungen:
   Konflikt mit der bewussten "kein ORM"-Entscheidung — hoher Aufwand.
 - **B – Sync:** lokales SQLite bleibt bestehen, zusätzlich Push/Pull bzw.
   Backup-Sync der DB-Datei oder ein Änderungs-Sync. Näher am bestehenden
-  Design, braucht aber Nutzerverwaltung (Punkt 2) als Basis für Eigentümer-
-  und Konfliktauflösung.
+  Design. Die Nutzerverwaltung (Punkt 2, jetzt vorhanden) liefert dafür
+  bereits die Eigentümer-Basis (`user_id`) für Konfliktauflösung.
 
-**Abhängigkeit:** setzt den Settings-Tab (für Konfiguration) und sinnvollerweise
-die Nutzerverwaltung voraus — deshalb als letzter Schritt eingeplant.
+**Abhängigkeit:** setzt den Settings-Tab (für Konfiguration) voraus —
+deshalb weiterhin nach Punkt 1 eingeplant.
 
-## 4. Ersteinrichtung
+## 4. Ersteinrichtung ⚠️ teilweise umgesetzt (Version 2.0.0)
 
 **Ziel:** Ein geführter Onboarding-Flow beim allerersten Start der App, der
-die Lücke schließt, dass heute nach der Installation direkt das leere
-Dashboard erscheint. Setzt Punkt 2 (Nutzerverwaltung) und Punkt 3
-(Remote DB / Sync) voraus, da hier deren initiale Konfiguration erst möglich
-wird.
+die Lücke schließt, dass nach der Installation direkt das leere Dashboard
+erscheint.
 
-**Ablauf (Vorschlag):**
-1. Erkennung "erster Start" (z. B. keine Zeile in `users`) → Redirect auf
-   `/ersteinrichtung`, solange dieser Zustand besteht.
-2. Anlage des ersten Admin-Benutzers (nutzt die `users`-Tabelle und den
-   Passwort-Hash-Mechanismus aus Punkt 2).
-3. Wahl der Datenhaltung: lokal (Status quo) oder Remote-DB/Sync verbinden
-   (nutzt die in Punkt 3 geschaffene Abstraktion + Settings-Persistenz aus
-   Punkt 1).
-4. Optional: erstes Konto (`accounts`) und Startkategorien anlegen, danach
-   Redirect ins reguläre Dashboard.
+**Umgesetzt:** Route `/ersteinrichtung` (`app.py`) + Template
+`templates/ersteinrichtung.html`. Erkennung "erster Start" über
+`db.user_count() == 0` (Gate `_require_setup`), Anlage des ersten
+Admin-Benutzers, automatische Übernahme verwaister Alt-Daten aus einer
+migrierten Vor-2.0.0-Datenbank (`db.claim_orphan_data()`) sowie Seeding der
+Standardkategorien (`db.seed_categories_for_user()`), danach Redirect ins
+Dashboard.
 
-**Betroffen:**
-- Neue Route(n) in `app.py` (z. B. `/ersteinrichtung`, evtl. mehrstufig)
-- Neues Template `templates/ersteinrichtung.html`
-- Before-Request-Hook oder Middleware, die bei fehlendem Erststart-Zustand
-  auf den Setup-Flow umleitet
-- Wiederverwendung der Bausteine aus Punkt 2 (User-Anlage) und Punkt 3
-  (Verbindungs-/Sync-Konfiguration) statt Doppelimplementierung
-
-**Tests:** Route(n) in `GET_ROUTEN` bzw. eigener Smoke-Test für den
-Redirect-Zwang im Erststart-Zustand; Test, dass die App nach abgeschlossener
-Ersteinrichtung nicht mehr dorthin umleitet.
+**Nicht umgesetzt:** der ursprünglich vorgesehene Schritt "Wahl der
+Datenhaltung: lokal oder Remote-DB/Sync verbinden" - setzt Punkt 3 voraus,
+das noch nicht existiert. Sobald Remote DB/Sync (Punkt 3) umgesetzt ist,
+kann dieser Schritt in `/ersteinrichtung` ergänzt werden.
 
 ---
 
-Konventionen für alle vier Punkte: jede Schema-Änderung muss `_migrate()` in
-`db.py` erweitern, und jede neue Route bzw. neue Analyse bekommt einen Test
-(siehe Testkonventionen in `PROJECT.md`).
+Konventionen für alle Punkte: jede Schema-Änderung muss `_migrate()` in
+`db.py` erweitern UND die Major-Zahl in `db.APP_VERSION` erhöhen (siehe
+Abschnitt "Versionierung & Migration" in `PROJECT.md`) — Bestandsinstallationen
+werden dadurch bis zum expliziten `db.migrate()`-Aufruf gesperrt, statt
+unbemerkt am neuen Schema vorbeizulaufen. Jede neue Route bzw. neue Analyse
+bekommt zusätzlich einen Test (siehe Testkonventionen in `PROJECT.md`).

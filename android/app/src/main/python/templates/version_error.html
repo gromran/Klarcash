@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Migration erforderlich – Hauptbuch{% endblock %}
+{% block content %}
+
+<h1>Migration erforderlich</h1>
+<p class="subtitle">
+    Die Datenbank passt nicht zur aktuell installierten Version der App.
+</p>
+
+<div class="form-card">
+    <p>
+        Code-Version: <strong>{{ code_version }}</strong><br>
+        Datenbank-Version: <strong>{{ db_version or "unbekannt (vor der Versionierung)" }}</strong>
+    </p>
+    <p>
+        Eine Schema-Änderung wird nicht automatisch übernommen, damit ein
+        Update nie unbemerkt in bestehende Daten eingreift. Bitte zuerst ein
+        Backup der Datenbankdatei anlegen, dann die Migration ausführen.
+    </p>
+    <div class="actions-row" style="margin-bottom:0;">
+        <a href="{{ url_for('migration') }}" class="btn btn-primary">Zur Migration</a>
+    </div>
+</div>
+
+{% endblock %}

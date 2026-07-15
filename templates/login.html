@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Anmelden – Hauptbuch{% endblock %}
+{% block content %}
+
+<h1>Anmelden</h1>
+<p class="subtitle">Bei Hauptbuch anmelden.</p>
+
+<div class="form-card">
+<form method="post">
+    <div class="field">
+        <label for="username">Benutzername</label>
+        <input type="text" name="username" id="username" autofocus required>
+    </div>
+    <div class="field">
+        <label for="password">Passwort</label>
+        <input type="password" name="password" id="password" required>
+    </div>
+    <div class="actions-row" style="justify-content:flex-end; margin-bottom:0;">
+        <button type="submit" class="btn btn-primary">Anmelden</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}

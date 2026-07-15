@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Migration – Hauptbuch{% endblock %}
+{% block content %}
+
+<h1>Migration</h1>
+<p class="subtitle">Datenbank-Schema auf die aktuelle Version heben.</p>
+
+<div class="form-card">
+    <p>
+        Code-Version: <strong>{{ code_version }}</strong><br>
+        Datenbank-Version: <strong>{{ db_version or "unbekannt (vor der Versionierung)" }}</strong>
+    </p>
+    {% if db_version == code_version %}
+        <p>Die Datenbank ist bereits auf dem aktuellen Stand.</p>
+        <div class="actions-row" style="margin-bottom:0;">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">Zur Übersicht</a>
+            <form method="post" style="display:inline;">
+                <button type="submit" class="btn btn-primary">Trotzdem erneut migrieren</button>
+            </form>
+        </div>
+    {% else %}
+        <p>
+            Fehlende Tabellen/Spalten werden ergänzt, bestehende Daten bleiben
+            erhalten. Vor der Migration ein Backup der Datenbankdatei
+            empfohlen.
+        </p>
+        <form method="post">
+            <div class="actions-row" style="margin-bottom:0;">
+                <button type="submit" class="btn btn-primary">Jetzt migrieren</button>
+            </div>
+        </form>
+    {% endif %}
+</div>
+
+{% endblock %}

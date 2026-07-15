@@ -21,10 +21,13 @@ python app.py
 Danach im Browser öffnen: http://127.0.0.1:5000
 
 Beim ersten Start wird automatisch `ausgaben.db` (SQLite-Datei) im
-Projektverzeichnis angelegt, inklusive einiger Standardkategorien.
-Konten legst du bewusst selbst an (**Konten → Neues Konto**) – es wird
-kein Platzhalterkonto vorausgesetzt, damit Anfangsbestände nicht geraten
-werden müssen.
+Projektverzeichnis angelegt. Da die App seit Version 2.0.0 eine Anmeldung
+voraussetzt, leitet sie beim allerersten Aufruf automatisch zur
+**Ersteinrichtung** weiter: dort legst du den ersten Benutzer an, der
+automatisch Administrator wird und dessen Standardkategorien erhält.
+Konten legst du danach bewusst selbst an (**Konten → Neues Konto**) – es
+wird kein Platzhalterkonto vorausgesetzt, damit Anfangsbestände nicht
+geraten werden müssen.
 
 ## Funktionsumfang
 
@@ -76,6 +79,10 @@ werden müssen.
   Konto-Filter und Auswahl der Buchungsarten (z. B. nur Ausgaben, oder
   inklusive Umbuchungen). Ergebnis lässt sich direkt als CSV
   exportieren (Semikolon-getrennt, für Excel/Tabellenkalkulation).
+- **Nutzerverwaltung**: Mehrbenutzerfähig mit Login. Jeder Benutzer sieht
+  ausschließlich seine eigenen Konten, Kategorien und Buchungen. Admins
+  verwalten weitere Benutzer unter **Nutzer** (anlegen, löschen), jeder
+  Benutzer kann sein eigenes Passwort unter **Profil** ändern.
 
 ## Projektstruktur
 
@@ -153,14 +160,19 @@ Die Tests laufen ausschließlich gegen temporäre Wegwerf-Datenbanken – deine
 ## Hinweise
 
 - Aktualisierst du von einer älteren Version dieser App, wird deine
-  bestehende `ausgaben.db` beim nächsten Start automatisch migriert
-  (fehlende Spalten für Papierkorb und Unterkategorien sowie die Tabelle
-  für Kassenzettel-Posten werden ergänzt) – vorhandene Buchungen und
-  Kategorien bleiben erhalten.
-- Die App ist für den lokalen Einzelnutzer-Betrieb gedacht (kein
-  Login/Mehrbenutzerbetrieb). `app.secret_key` in `app.py` ist daher bewusst
-  einfach gehalten – für einen Betrieb außerhalb von localhost sollte er
-  durch einen zufälligen, geheimen Wert ersetzt werden.
+  bestehende `ausgaben.db` **nicht** automatisch migriert – die App vergleicht
+  beim Start die Major-Version des Codes mit der in der DB gespeicherten
+  Version und sperrt bei Abweichung jede Seite mit einer Fehlermeldung.
+  Migrieren (fehlende Spalten/Tabellen werden ergänzt, vorhandene Buchungen
+  und Kategorien bleiben erhalten) geht explizit über `python app.py
+  --migrate` oder über den Button auf der Seite `/migration`. Aktualisierst
+  du von einer Version **vor 2.0.0** (vor der Nutzerverwaltung), führt die
+  Migration direkt in die Ersteinrichtung: der dort angelegte erste Benutzer
+  übernimmt automatisch alle bestehenden Konten, Kategorien und Buchungen.
+- Login ist seit Version 2.0.0 Pflicht. Der Session-Schlüssel
+  (`app.secret_key`) wird beim ersten Start automatisch zufällig erzeugt und
+  in `.secret_key` neben der Datenbank gespeichert (nicht versioniert) –
+  keine manuelle Konfiguration nötig.
 - Für einen produktiveren Einsatz (z. B. Dauerbetrieb im Netzwerk) empfiehlt
   sich ein WSGI-Server wie `waitress` oder `gunicorn` statt des eingebauten
   Entwicklungsservers.

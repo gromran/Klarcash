@@ -96,11 +96,52 @@ a { color: inherit; text-decoration: none; }
 
 .sidebar-cta { margin-top: auto; }
 
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 12px;
+    font-size: 13px;
+    color: var(--ink-soft);
+}
+
+.sidebar-username { font-weight: 500; color: var(--ink); }
+
+.link-button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    text-decoration: underline;
+}
+.link-button:hover { color: var(--ink); }
+
+.sidebar-version {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-align: center;
+}
+
 /* ---------------- Content ---------------- */
 .content {
     padding: 36px 44px;
     max-width: 1080px;
     min-width: 0; /* Grid-Item schrumpft sonst nicht unter die Breite seines Inhalts (z. B. der Posten-Tabelle) */
+}
+
+/* Login/Ersteinrichtung: ohne Sidebar bleibt .content das einzige
+   Grid-Kind von .layout - ohne grid-column wuerde es nur die erste
+   (220px-)Spalte fuellen statt zentriert ueber die volle Breite zu stehen. */
+.auth-content {
+    grid-column: 1 / -1;
+    max-width: 400px;
+    width: 100%;
+    margin: 72px auto;
 }
 
 h1 {

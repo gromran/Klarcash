@@ -5,6 +5,8 @@ zwei Ebenen, Art-Konsistenz, Selbstreferenz - sowie die Loeschsperren in
 db.category_in_use / db.category_has_children.
 """
 
+import pytest
+
 import db
 from conftest import fetchone, scalar
 
@@ -46,10 +48,11 @@ def test_unterkategorie_anlegen(client, make):
 
 
 def test_doppelter_name_wird_abgelehnt(client, make):
-    resp = anlegen(client, "Lebensmittel")  # existiert als Standardkategorie
+    anlegen(client, "Tanken")
+    resp = anlegen(client, "Tanken")
 
     assert "Diese Kategorie existiert bereits." in resp.get_data(as_text=True)
-    assert scalar("SELECT COUNT(*) FROM categories WHERE name = 'Lebensmittel'") == 1
+    assert scalar("SELECT COUNT(*) FROM categories WHERE name = 'Tanken'") == 1
 
 
 def test_doppelter_name_liefert_trotzdem_redirect(client, make):
@@ -210,7 +213,7 @@ def test_category_tree_baut_zwei_ebenen(make):
     make.category("Milch", kind="Ausgabe", parent=haupt)
 
     with db.db_session() as conn:
-        baum = db.category_tree(conn, kind="Ausgabe")
+        baum = db.category_tree(conn, make.default_user_id, kind="Ausgabe")
 
     lebensmittel = next(k for k in baum if k["name"] == "Lebensmittel")
     assert [c["name"] for c in lebensmittel["children"]] == ["Brot", "Milch"]  # alphabetisch
@@ -219,6 +222,6 @@ def test_category_tree_baut_zwei_ebenen(make):
 
 def test_category_tree_filtert_nach_art(make):
     with db.db_session() as conn:
-        einnahmen = db.category_tree(conn, kind="Einnahme")
+        einnahmen = db.category_tree(conn, make.default_user_id, kind="Einnahme")
 
     assert {k["name"] for k in einnahmen} == {"Gehalt", "Sonstige Einnahmen"}

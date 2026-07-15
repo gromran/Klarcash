@@ -192,15 +192,15 @@ def test_parse_items_ohne_posten():
 
 # --------------------------------------------- _validate_category_form
 
-def test_category_form_gueltig(initialized_db):
+def test_category_form_gueltig(test_user_id):
     with db.db_session() as conn:
-        assert _validate_category_form(conn, "Tanken", "Ausgabe", None) == []
+        assert _validate_category_form(conn, test_user_id, "Tanken", "Ausgabe", None) == []
 
 
 @pytest.mark.parametrize("name,kind", [("", "Ausgabe"), ("Tanken", "Quatsch"), ("", "")])
-def test_category_form_braucht_name_und_art(initialized_db, name, kind):
+def test_category_form_braucht_name_und_art(test_user_id, name, kind):
     with db.db_session() as conn:
-        errors = _validate_category_form(conn, name, kind, None)
+        errors = _validate_category_form(conn, test_user_id, name, kind, None)
 
     assert errors == ["Bitte Name und Art der Kategorie angeben."]
 
@@ -209,14 +209,14 @@ def test_category_form_selbstreferenz(make):
     kat = make.category_id("Freizeit")
 
     with db.db_session() as conn:
-        errors = _validate_category_form(conn, "Freizeit", "Ausgabe", kat, current_id=kat)
+        errors = _validate_category_form(conn, make.default_user_id, "Freizeit", "Ausgabe", kat, current_id=kat)
 
     assert "eigene übergeordnete Kategorie" in errors[0]
 
 
-def test_category_form_unbekanntes_elternteil(initialized_db):
+def test_category_form_unbekanntes_elternteil(test_user_id):
     with db.db_session() as conn:
-        errors = _validate_category_form(conn, "Waise", "Ausgabe", 9999)
+        errors = _validate_category_form(conn, test_user_id, "Waise", "Ausgabe", 9999)
 
     assert errors == ["Übergeordnete Kategorie wurde nicht gefunden."]
 
@@ -226,7 +226,7 @@ def test_category_form_dritte_ebene(make):
     unter = make.category("Brot", kind="Ausgabe", parent=haupt)
 
     with db.db_session() as conn:
-        errors = _validate_category_form(conn, "Vollkorn", "Ausgabe", unter)
+        errors = _validate_category_form(conn, make.default_user_id, "Vollkorn", "Ausgabe", unter)
 
     assert "nur zwei Ebenen" in errors[0]
 
@@ -235,7 +235,7 @@ def test_category_form_art_muss_passen(make):
     haupt = make.category_id("Lebensmittel")  # Ausgabe
 
     with db.db_session() as conn:
-        errors = _validate_category_form(conn, "Bonus", "Einnahme", haupt)
+        errors = _validate_category_form(conn, make.default_user_id, "Bonus", "Einnahme", haupt)
 
     assert errors == ["Die Art muss mit der übergeordneten Kategorie übereinstimmen."]
 

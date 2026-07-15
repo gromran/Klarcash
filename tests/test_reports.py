@@ -111,7 +111,7 @@ def test_berichte_filtert_nach_konto(client, make):
 def test_berichte_unbekannte_gruppierung_faellt_auf_kategorie_zurueck(client, make):
     make.account()
 
-    group_by, arten, _ = app_module._build_report("quatsch", None, None, None, "quatsch")
+    group_by, arten, _ = app_module._build_report(make.default_user_id, "quatsch", None, None, None, "quatsch")
 
     assert (group_by, arten) == ("kategorie", "ein_aus")
 
@@ -121,8 +121,8 @@ def test_berichte_umbuchungen_nur_bei_arten_alle(client, make):
     ziel = make.account(name="Bar", type="Bar")
     make.tx(quelle, type="Umbuchung", amount=100.0, target=ziel, date="2026-07-01")
 
-    _, _, ohne = app_module._build_report("art", "2026-01-01", "2026-12-31", None, "ein_aus")
-    _, _, mit = app_module._build_report("art", "2026-01-01", "2026-12-31", None, "alle")
+    _, _, ohne = app_module._build_report(make.default_user_id, "art", "2026-01-01", "2026-12-31", None, "ein_aus")
+    _, _, mit = app_module._build_report(make.default_user_id, "art", "2026-01-01", "2026-12-31", None, "alle")
 
     assert ohne == []
     assert [r["label"] for r in mit] == ["Umbuchung"]

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Nutzer – Hauptbuch{% endblock %}
+{% block content %}
+
+<div class="actions-row">
+    <div>
+        <h1>Nutzer</h1>
+        <p class="subtitle" style="margin-bottom:0;">Verwaltung der Benutzerkonten.</p>
+    </div>
+    <a href="{{ url_for('user_new') }}" class="btn btn-primary">+ Neuer Nutzer</a>
+</div>
+
+{% if users %}
+<table class="ledger">
+    <thead>
+        <tr>
+            <th>Benutzername</th>
+            <th>Rolle</th>
+            <th>Angelegt</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for u in users %}
+        <tr>
+            <td data-label="Benutzername">{{ u.username }}{{ " (du)" if u.id == current_user.id }}</td>
+            <td data-label="Rolle"><span class="pill">{{ u.role }}</span></td>
+            <td data-label="Angelegt">{{ u.created_at }}</td>
+            <td data-label="">
+                {% if u.id != current_user.id %}
+                <form class="inline" method="post" action="{{ url_for('user_delete', target_id=u.id) }}"
+                      onsubmit="return confirm('Diesen Nutzer wirklich löschen?');">
+                    <button type="submit" class="btn btn-ghost btn-danger">Löschen</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">Keine Nutzer vorhanden.</div>
+{% endif %}
+
+{% endblock %}

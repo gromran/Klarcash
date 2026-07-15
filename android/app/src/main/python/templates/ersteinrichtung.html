@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Ersteinrichtung – Hauptbuch{% endblock %}
+{% block content %}
+
+<h1>Willkommen bei Hauptbuch</h1>
+<p class="subtitle">Lege den ersten Benutzer an, um loszulegen. Dieser wird automatisch Administrator.</p>
+
+<div class="form-card">
+<form method="post">
+    <div class="field">
+        <label for="username">Benutzername</label>
+        <input type="text" name="username" id="username" value="{{ form.get('username', '') }}" autofocus required>
+    </div>
+    <div class="field">
+        <label for="password">Passwort</label>
+        <input type="password" name="password" id="password" required>
+        <small>Mindestens 8 Zeichen.</small>
+    </div>
+    <div class="field">
+        <label for="password_confirm">Passwort bestätigen</label>
+        <input type="password" name="password_confirm" id="password_confirm" required>
+    </div>
+    <div class="actions-row" style="justify-content:flex-end; margin-bottom:0;">
+        <button type="submit" class="btn btn-primary">Einrichtung abschließen</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}

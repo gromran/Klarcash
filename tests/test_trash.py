@@ -64,12 +64,12 @@ def test_geloeschte_buchung_faellt_aus_den_auswertungen(client, make):
     client.post(f"/buchungen/{tx}/loeschen")
 
     with db.db_session() as conn:
-        assert db.monthly_summary(conn, "2026-01-01") == {}
-        assert db.category_breakdown(conn, "Ausgabe", "2026-01-01") == []
-        start_total, series = db.net_worth_series(conn)
+        assert db.monthly_summary(conn, "2026-01-01", make.default_user_id) == {}
+        assert db.category_breakdown(conn, "Ausgabe", "2026-01-01", make.default_user_id) == []
+        start_total, series = db.net_worth_series(conn, make.default_user_id)
         assert start_total == 100.0
         assert series == []
-        assert db.earliest_transaction_date(conn) is None
+        assert db.earliest_transaction_date(conn, make.default_user_id) is None
 
 
 def test_wiederherstellen_macht_den_soft_delete_rueckgaengig(client, make):

@@ -37,12 +37,12 @@ def test_umbuchung_verschiebt_zwischen_konten(make):
 def test_umbuchung_laesst_gesamtsumme_unveraendert(make):
     quelle = make.account(name="Giro", initial=500.0)
     ziel = make.account(name="Bar", type="Bar", initial=100.0)
-    vorher = total()
+    vorher = total(make.default_user_id)
 
     make.tx(quelle, type="Umbuchung", amount=200.0, target=ziel)
 
-    assert total() == pytest.approx(vorher)
-    assert total() == pytest.approx(600.0)
+    assert total(make.default_user_id) == pytest.approx(vorher)
+    assert total(make.default_user_id) == pytest.approx(600.0)
 
 
 def test_saldo_folgt_transactions_amount_nicht_der_postensumme(make):
@@ -85,8 +85,8 @@ def test_accounts_with_balances_blendet_archivierte_aus(make):
     make.account(name="Archiviert", initial=999.0, archived=1)
 
     with db.db_session() as conn:
-        aktiv = db.accounts_with_balances(conn)
-        alle = db.accounts_with_balances(conn, include_archived=True)
+        aktiv = db.accounts_with_balances(conn, make.default_user_id)
+        alle = db.accounts_with_balances(conn, make.default_user_id, include_archived=True)
 
     assert [a["name"] for a in aktiv] == ["Aktiv"]
     assert {a["name"] for a in alle} == {"Aktiv", "Archiviert"}
@@ -96,7 +96,7 @@ def test_total_balance_ignoriert_archivierte_konten(make):
     make.account(name="Aktiv", initial=100.0)
     make.account(name="Archiviert", initial=999.0, archived=1)
 
-    assert total() == pytest.approx(100.0)
+    assert total(make.default_user_id) == pytest.approx(100.0)
 
 
 def test_accounts_with_balances_liefert_balance_je_konto(make):
@@ -104,7 +104,7 @@ def test_accounts_with_balances_liefert_balance_je_konto(make):
     make.tx(acc, type="Einnahme", amount=25.0)
 
     with db.db_session() as conn:
-        konten = db.accounts_with_balances(conn)
+        konten = db.accounts_with_balances(conn, make.default_user_id)
 
     assert konten[0]["balance"] == pytest.approx(125.0)
     assert konten[0]["name"] == "Giro"  # dict enthaelt weiterhin alle Spalten
@@ -114,8 +114,8 @@ def test_unbekanntes_konto_hat_saldo_null(initialized_db):
     assert balance(999) == 0.0
 
 
-def test_total_balance_ohne_konten_ist_null(initialized_db):
-    assert total() == 0
+def test_total_balance_ohne_konten_ist_null(test_user_id):
+    assert total(test_user_id) == 0
 
 
 def test_betrag_muss_groesser_null_sein(make):

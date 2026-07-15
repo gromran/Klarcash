@@ -19,6 +19,10 @@ GET_ROUTEN = [
     "/statistiken",
     "/berichte",
     "/berichte/export.csv",
+    "/migration",
+    "/nutzer",  # client ist per initialized_db-Fixture ein Admin
+    "/nutzer/neu",
+    "/profil",
 ]
 
 

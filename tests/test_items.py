@@ -262,7 +262,7 @@ def test_category_breakdown_loest_posten_kategorien_auf(client, make):
     make.items(tx, [("Brot", 10.0, lebensmittel), ("Kino", 20.0, freizeit)])
 
     with db.db_session() as conn:
-        rows = db.category_breakdown(conn, "Ausgabe", "2026-01-01")
+        rows = db.category_breakdown(conn, "Ausgabe", "2026-01-01", make.default_user_id)
 
     ergebnis = {r["category"]: r["summe"] for r in rows}
     assert ergebnis == {"Freizeit": 20.0, "Lebensmittel": 10.0}
@@ -276,6 +276,6 @@ def test_category_breakdown_zeigt_unterkategorie_mit_pfad(client, make):
     make.items(tx, [("Vollkorn", 3.0, unter)])
 
     with db.db_session() as conn:
-        rows = db.category_breakdown(conn, "Ausgabe", "2026-01-01")
+        rows = db.category_breakdown(conn, "Ausgabe", "2026-01-01", make.default_user_id)
 
     assert rows[0]["category"] == "Lebensmittel › Brot"

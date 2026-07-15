@@ -7,6 +7,7 @@ venv/
 
 # --- Lokale Datenbank (persönliche Daten) ---
 ausgaben.db
+.secret_key
 
 # --- IDE ---
 .idea/
@@ -21,3 +22,4 @@ android/build/
 android/app/build/
 android/app/release/
 android/local.properties
+/CLAUDE.md

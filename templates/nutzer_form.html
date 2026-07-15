@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Neuer Nutzer – Hauptbuch{% endblock %}
+{% block content %}
+
+<h1>Neuer Nutzer</h1>
+<p class="subtitle">Legt ein neues Benutzerkonto mit eigenen Standardkategorien an.</p>
+
+<div class="form-card">
+<form method="post">
+    <div class="field">
+        <label for="username">Benutzername</label>
+        <input type="text" name="username" id="username" value="{{ form.get('username', '') }}" autofocus required>
+    </div>
+    <div class="field">
+        <label for="role">Rolle</label>
+        <select name="role" id="role">
+            <option value="user" {{ 'selected' if form.get('role', 'user') == 'user' }}>Nutzer</option>
+            <option value="admin" {{ 'selected' if form.get('role') == 'admin' }}>Administrator</option>
+        </select>
+    </div>
+    <div class="field">
+        <label for="password">Passwort</label>
+        <input type="password" name="password" id="password" required>
+        <small>Mindestens 8 Zeichen.</small>
+    </div>
+    <div class="field">
+        <label for="password_confirm">Passwort bestätigen</label>
+        <input type="password" name="password_confirm" id="password_confirm" required>
+    </div>
+    <div class="actions-row" style="margin-bottom:0;">
+        <a href="{{ url_for('users_list') }}" class="btn btn-ghost">Abbrechen</a>
+        <button type="submit" class="btn btn-primary">Nutzer anlegen</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}

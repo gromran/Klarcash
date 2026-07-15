@@ -18,8 +18,11 @@
             <span class="brand-mark">§</span>
             <span class="brand-name">Hauptbuch</span>
         </a>
+        {% if current_user %}
         <label for="nav-toggle" class="nav-burger" aria-label="Menü öffnen">☰</label>
+        {% endif %}
     </header>
+    {% if current_user %}
     <label for="nav-toggle" class="nav-backdrop"></label>
 
     <aside class="sidebar">
@@ -35,11 +38,22 @@
             <a href="{{ url_for('accounts_overview') }}" class="{{ 'active' if request.endpoint in ['accounts_overview','account_new'] }}">Konten</a>
             <a href="{{ url_for('categories_view') }}" class="{{ 'active' if request.endpoint == 'categories_view' }}">Kategorien</a>
             <a href="{{ url_for('trash') }}" class="{{ 'active' if request.endpoint == 'trash' }}">Papierkorb</a>
+            {% if current_user.role == 'admin' %}
+            <a href="{{ url_for('users_list') }}" class="{{ 'active' if request.endpoint in ['users_list','user_new'] }}">Nutzer</a>
+            {% endif %}
         </nav>
         <a href="{{ url_for('transaction_new') }}" class="btn btn-primary sidebar-cta">+ Neue Buchung</a>
+        <div class="sidebar-user">
+            <a href="{{ url_for('profile') }}" class="sidebar-username">{{ current_user.username }}</a>
+            <form method="post" action="{{ url_for('logout') }}">
+                <button type="submit" class="link-button">Abmelden</button>
+            </form>
+        </div>
+        <div class="sidebar-version">v{{ app_version }}</div>
     </aside>
+    {% endif %}
 
-    <main class="content">
+    <main class="content {{ 'auth-content' if not current_user }}">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="flash-stack">

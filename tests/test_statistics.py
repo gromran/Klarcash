@@ -12,7 +12,7 @@ def test_monthly_summary_gruppiert_nach_monat(make):
     make.tx(acc, type="Ausgabe", amount=300.0, date="2026-07-02")
 
     with db.db_session() as conn:
-        summary = db.monthly_summary(conn, "2026-01-01")
+        summary = db.monthly_summary(conn, "2026-01-01", make.default_user_id)
 
     assert summary["2026-06"] == {"einnahmen": 2000.0, "ausgaben": 500.0}
     assert summary["2026-07"] == {"einnahmen": 0, "ausgaben": 300.0}
@@ -24,7 +24,7 @@ def test_monthly_summary_respektiert_startdatum(make):
     make.tx(acc, type="Ausgabe", amount=200.0, date="2026-07-01")
 
     with db.db_session() as conn:
-        summary = db.monthly_summary(conn, "2026-01-01")
+        summary = db.monthly_summary(conn, "2026-01-01", make.default_user_id)
 
     assert list(summary) == ["2026-07"]
 
@@ -34,7 +34,7 @@ def test_monthly_summary_ignoriert_geloeschte(make):
     make.tx(acc, type="Ausgabe", amount=100.0, date="2026-07-01", deleted=1)
 
     with db.db_session() as conn:
-        assert db.monthly_summary(conn, "2026-01-01") == {}
+        assert db.monthly_summary(conn, "2026-01-01", make.default_user_id) == {}
 
 
 def test_monthly_summary_ignoriert_umbuchungen(make):
@@ -43,7 +43,7 @@ def test_monthly_summary_ignoriert_umbuchungen(make):
     make.tx(quelle, type="Umbuchung", amount=100.0, target=ziel, date="2026-07-01")
 
     with db.db_session() as conn:
-        summary = db.monthly_summary(conn, "2026-01-01")
+        summary = db.monthly_summary(conn, "2026-01-01", make.default_user_id)
 
     assert summary["2026-07"] == {"einnahmen": 0, "ausgaben": 0}
 
@@ -56,7 +56,7 @@ def test_net_worth_series_kumuliert(make):
     make.tx(acc, type="Ausgabe", amount=200.0, date="2026-06-15")
 
     with db.db_session() as conn:
-        start, series = db.net_worth_series(conn)
+        start, series = db.net_worth_series(conn, make.default_user_id)
 
     assert start == 1000.0
     assert series == [
@@ -71,7 +71,7 @@ def test_net_worth_series_ignoriert_umbuchungen(make):
     make.tx(quelle, type="Umbuchung", amount=300.0, target=ziel, date="2026-06-01")
 
     with db.db_session() as conn:
-        start, series = db.net_worth_series(conn)
+        start, series = db.net_worth_series(conn, make.default_user_id)
 
     assert start == 1000.0
     assert series == [{"date": "2026-06-01", "total": 1000.0}]  # Summe unveraendert
@@ -83,7 +83,7 @@ def test_net_worth_series_ignoriert_archivierte_konten(make):
     make.tx(archiviert, type="Einnahme", amount=999.0, date="2026-06-01")
 
     with db.db_session() as conn:
-        start, series = db.net_worth_series(conn)
+        start, series = db.net_worth_series(conn, make.default_user_id)
 
     assert start == 1000.0
     assert series == []
@@ -94,14 +94,14 @@ def test_net_worth_series_ignoriert_geloeschte(make):
     make.tx(acc, type="Ausgabe", amount=100.0, date="2026-06-01", deleted=1)
 
     with db.db_session() as conn:
-        start, series = db.net_worth_series(conn)
+        start, series = db.net_worth_series(conn, make.default_user_id)
 
     assert (start, series) == (1000.0, [])
 
 
-def test_net_worth_series_auf_leerer_db(initialized_db):
+def test_net_worth_series_auf_leerer_db(test_user_id):
     with db.db_session() as conn:
-        assert db.net_worth_series(conn) == (0, [])
+        assert db.net_worth_series(conn, test_user_id) == (0, [])
 
 
 # ------------------------------------------------- category_breakdown
@@ -112,7 +112,7 @@ def test_category_breakdown_sortiert_absteigend(make):
     make.tx(acc, type="Ausgabe", amount=900.0, category=make.category_id("Miete"), date="2026-07-01")
 
     with db.db_session() as conn:
-        rows = db.category_breakdown(conn, "Ausgabe", "2026-01-01")
+        rows = db.category_breakdown(conn, "Ausgabe", "2026-01-01", make.default_user_id)
 
     assert [r["category"] for r in rows] == ["Miete", "Freizeit"]
     assert rows[0]["summe"] == 900.0
@@ -123,7 +123,7 @@ def test_category_breakdown_ohne_kategorie(make):
     make.tx(acc, type="Ausgabe", amount=50.0, category=None, date="2026-07-01")
 
     with db.db_session() as conn:
-        rows = db.category_breakdown(conn, "Ausgabe", "2026-01-01")
+        rows = db.category_breakdown(conn, "Ausgabe", "2026-01-01", make.default_user_id)
 
     assert rows[0]["category"] == "Ohne Kategorie"
 
@@ -134,8 +134,8 @@ def test_category_breakdown_trennt_nach_art(make):
     make.tx(acc, type="Ausgabe", amount=900.0, category=make.category_id("Miete"), date="2026-07-01")
 
     with db.db_session() as conn:
-        einnahmen = db.category_breakdown(conn, "Einnahme", "2026-01-01")
-        ausgaben = db.category_breakdown(conn, "Ausgabe", "2026-01-01")
+        einnahmen = db.category_breakdown(conn, "Einnahme", "2026-01-01", make.default_user_id)
+        ausgaben = db.category_breakdown(conn, "Ausgabe", "2026-01-01", make.default_user_id)
 
     assert [r["category"] for r in einnahmen] == ["Gehalt"]
     assert [r["category"] for r in ausgaben] == ["Miete"]
@@ -148,7 +148,7 @@ def test_earliest_transaction_date(make):
     make.tx(acc, date="2024-01-01", deleted=1)  # zaehlt nicht
 
     with db.db_session() as conn:
-        assert db.earliest_transaction_date(conn) == "2025-03-15"
+        assert db.earliest_transaction_date(conn, make.default_user_id) == "2025-03-15"
 
 
 # ----------------------------------------------------------- Route
