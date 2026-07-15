@@ -207,7 +207,7 @@ Login ist Pflicht. Zwei `before_request`-Gates laufen nach dem Schema-Gate:
 | Buchungen | `GET /buchungen` (Filter: `konto`, `typ`, `von`, `bis`, `suche`, `seite`), `GET/POST /buchungen/neu`, `GET/POST /buchungen/<id>/bearbeiten`, `POST /buchungen/<id>/loeschen` |
 | Papierkorb | `GET /papierkorb`, `POST /papierkorb/<id>/wiederherstellen`, `POST /papierkorb/<id>/endgueltig-loeschen` |
 | Konten | `GET /konten`, `GET/POST /konten/neu`, `POST /konten/<id>/archivieren` |
-| Kategorien | `GET/POST /kategorien`, `GET/POST /kategorien/<id>/bearbeiten`, `POST /kategorien/<id>/loeschen` |
+| Kategorien | `GET/POST /kategorien`, `POST /kategorien/neu.json` (AJAX-Inline-Anlage aus dem Buchungsformular), `GET/POST /kategorien/<id>/bearbeiten`, `POST /kategorien/<id>/loeschen` |
 | Statistiken | `GET /statistiken` (Query: `zeitraum` = 6/12/24/alle) |
 | Berichte | `GET /berichte` (Query: `gruppierung`, `arten`, `von`, `bis`, `konto`), `GET /berichte/export.csv` |
 | Migration | `GET/POST /migration` (Versionsanzeige + expliziter Migrations-Trigger, siehe Abschnitt "Versionierung & Migration") |
