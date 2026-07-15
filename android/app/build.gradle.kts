@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "de.hauptbuch.ausgaben"
+    namespace = "de.klarcash.ausgaben"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "de.hauptbuch.ausgaben"
+        applicationId = "de.klarcash.ausgaben"
         // MediaStore.Downloads (used for the CSV export, see MainActivity.kt)
         // needs API 29+; kept as the floor here to avoid a legacy
         // storage-permission fallback path for what is a personal-use app.

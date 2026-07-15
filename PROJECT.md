@@ -1,4 +1,4 @@
-# Hauptbuch – Ausgabenverwaltung
+# Klarcash – Ausgabenverwaltung
 
 Projekt-Zusammenfassung als Kontext für die Weiterentwicklung mit Claude Code.
 Stand: siehe Git-Historie / Dateidatum. Diese Datei beschreibt Architektur,

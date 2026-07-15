@@ -22,7 +22,9 @@ DB_PATH = Path(__file__).parent / "ausgaben.db"
 # transactions, categories neu mit UNIQUE(user_id, name) statt UNIQUE(name)
 # (zwei Nutzer duerfen je eine "Miete" haben). Siehe _migrate() fuer den
 # dafuer noetigen Tabellen-Rebuild von categories.
-APP_VERSION = "2.0.0"
+# 2.0.1: App umbenannt von "Hauptbuch" zu "Klarcash" (nur Anzeige/Branding,
+# keine Schema-Aenderung).
+APP_VERSION = "2.0.1"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (

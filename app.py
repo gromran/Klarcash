@@ -1336,7 +1336,7 @@ def _lan_ip():
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Ausgabenverwaltung Hauptbuch")
+    parser = argparse.ArgumentParser(description="Ausgabenverwaltung Klarcash")
     parser.add_argument(
         "--online",
         action="store_true",
@@ -1361,7 +1361,7 @@ if __name__ == "__main__":
     if args.online:
         # Kein debug=True bei externer Erreichbarkeit: der Werkzeug-Debugger
         # wuerde sonst jedem im Netz Codeausführung auf diesem Rechner erlauben.
-        print(f"\n  Hauptbuch laeuft im Netzwerk:  http://{_lan_ip()}:{args.port}")
+        print(f"\n  Klarcash laeuft im Netzwerk:  http://{_lan_ip()}:{args.port}")
         print("  WARNUNG: Keine Anmeldung - jeder im Netzwerk kann Buchungen")
         print("           lesen und aendern. Nur in vertrauenswuerdigen Netzen nutzen.\n")
         app.run(host="0.0.0.0", port=args.port, debug=False, threaded=True)

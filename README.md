@@ -1,4 +1,4 @@
-# Hauptbuch – Ausgabenverwaltung
+# Klarcash – Ausgabenverwaltung
 
 Kleine Webanwendung zur Verwaltung von Einnahmen, Ausgaben und Kontobeständen
 (Konto / Bar / Anlage). Backend: Python (Flask), Datenhaltung: SQLite.

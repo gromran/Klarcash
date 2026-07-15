@@ -1,4 +1,4 @@
-package de.hauptbuch.ausgaben
+package de.klarcash.ausgaben
 
 import android.annotation.SuppressLint
 import android.app.Activity

@@ -1,6 +1,6 @@
 # Roadmap
 
-Hauptbuch startete als bewusst einfache Single-User-App mit flachem
+Klarcash startete als bewusst einfache Single-User-App mit flachem
 `app.py` + `db.py`, rohem `sqlite3` (kein ORM), ohne Anmeldung und ohne
 Konfigurationsschicht. Seit Version 2.0.0 ist die **Nutzerverwaltung**
 umgesetzt (siehe Punkt 2 unten) - diese Roadmap beschreibt die verbleibenden

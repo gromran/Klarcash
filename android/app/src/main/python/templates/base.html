@@ -16,7 +16,7 @@
     <header class="topbar">
         <a href="{{ url_for('dashboard') }}" class="brand">
             <span class="brand-mark">§</span>
-            <span class="brand-name">Hauptbuch</span>
+            <span class="brand-name">Klarcash</span>
         </a>
         {% if current_user %}
         <label for="nav-toggle" class="nav-burger" aria-label="Menü öffnen">☰</label>
@@ -28,7 +28,7 @@
     <aside class="sidebar">
         <a href="{{ url_for('dashboard') }}" class="brand">
             <span class="brand-mark">§</span>
-            <span class="brand-name">Hauptbuch</span>
+            <span class="brand-name">Klarcash</span>
         </a>
         <nav class="nav">
             <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">Übersicht</a>
