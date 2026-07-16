@@ -52,7 +52,13 @@ def main() -> None:
     _wait_for_server(port)
 
     webview.create_window("Klarcash", f"http://127.0.0.1:{port}/", width=1200, height=800)
-    webview.start()
+    # Primaerquelle des .exe-/Taskleisten-Icons ist icon= im EXE-Block von
+    # klarcash.spec; dieser Parameter deckt zusaetzlich den Start aus dem
+    # Quellcode ab (python desktop.py) und wirkt fuer Source- UND
+    # PyInstaller-Builds gleichermassen, da app._RESOURCE_DIR beide Faelle
+    # unterscheidet (siehe app.py).
+    _icon_path = app._RESOURCE_DIR / "static" / "icons" / "klarcash.ico"
+    webview.start(icon=str(_icon_path) if _icon_path.exists() else None)
 
 
 if __name__ == "__main__":

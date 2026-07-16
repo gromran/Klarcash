@@ -32,7 +32,9 @@ DB_PATH = Path(__file__).parent / "ausgaben.db"
 # 3.2.0: Windows-Desktop-Launcher (desktop.py, klarcash.spec) - Flask-Server
 # in nativem pywebview-Fenster statt Browser, DB/Secret-Key unter
 # %APPDATA%\Klarcash - keine Schema-Aenderung.
-APP_VERSION = "3.2.0"
+# 3.3.0: App-Icons eingebaut (Web-Favicons + Manifest, Android Adaptive Icon,
+# Desktop-.exe-/Fenster-Icon) - keine Schema-Aenderung.
+APP_VERSION = "3.3.0"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (

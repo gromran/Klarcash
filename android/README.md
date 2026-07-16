@@ -11,10 +11,6 @@ im Repo committed – kein Android Studio zum Erzeugen nötig, siehe
 `README.md` im Projekt-Root für den Bau-Befehl. Trotzdem fehlt noch:
 
 - Android Studio + JDK 17 + Android SDK (Platform + Build-Tools) installieren.
-- App-Icons (`res/mipmap-*/ic_launcher*`) fehlen bewusst – über Android
-  Studios "Image Asset"-Tool generieren, sonst schlägt der Build wegen
-  fehlender Standard-Icons ggf. fehl, falls `android:icon` im Manifest
-  gesetzt wird (aktuell absichtlich weggelassen).
 - `chaquopy`-Plugin-Version und Python-Version (`android/app/build.gradle.kts`)
   gegen die aktuelle Kompatibilitätsmatrix auf chaquo.com prüfen, passend zur
   installierten AGP/Gradle-Version.
@@ -30,6 +26,12 @@ im Repo committed – kein Android Studio zum Erzeugen nötig, siehe
   den Port bis der Server bereit ist, und fängt den CSV-Export-Link ab, um
   ihn über die `MediaStore.Downloads`-API ins echte Downloads-Verzeichnis zu
   schreiben.
+- Launcher-Icon: adaptives Icon aus `@color/ic_launcher_background` (Teal,
+  `res/values/colors.xml`) + `res/drawable/ic_launcher_foreground.xml`
+  (Vector-Drawable, aus `klarcash-icon.svg` abgeleitet), verdrahtet über
+  `res/mipmap-anydpi-v26/ic_launcher*.xml`. Die `res/mipmap-*dpi/ic_launcher*.png`
+  sind reine Legacy-Fallbacks für API < 26 (bei `minSdk 29` faktisch ungenutzt).
+  Icon-Quelle: `C:/Users/Gromran/PycharmProjects/icons/`.
 
 ## Bekannte offene Punkte
 

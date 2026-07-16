@@ -1,0 +1,37 @@
+<!-- Vordergrund-Layer des adaptiven Launcher-Icons: das Karten-/Kassen-Motiv
+     aus klarcash-icon.svg, ohne die teal Hintergrundflaeche (die kommt aus
+     @color/ic_launcher_background). Pfade 1:1 aus dem 200x200-viewBox-SVG
+     uebernommen, um 0.66 skaliert und auf die 108dp-Safe-Zone zentriert. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <group
+        android:name="klarcash_mark"
+        android:pivotX="100"
+        android:pivotY="100"
+        android:scaleX="0.66"
+        android:scaleY="0.66">
+        <group android:pivotX="100" android:pivotY="75" android:rotation="-12">
+            <path
+                android:pathData="M76,58H124A4,4 0 0 1 128,62V88A4,4 0 0 1 124,92H76A4,4 0 0 1 72,88V62A4,4 0 0 1 76,58Z"
+                android:fillColor="#FFFFFF"
+                android:strokeColor="#085041"
+                android:strokeWidth="3" />
+            <path
+                android:pathData="M82,75L118,75"
+                android:strokeColor="#085041"
+                android:strokeWidth="2.5" />
+        </group>
+        <path
+            android:pathData="M65,90h60a8,8 0 0 1 8,8v36a8,8 0 0 1 -8,8h-60a8,8 0 0 1 -8,-8v-36a8,8 0 0 1 8,-8z"
+            android:fillColor="#085041"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="5" />
+        <path
+            android:pathData="M57,102h76"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="5" />
+    </group>
+</vector>

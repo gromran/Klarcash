@@ -1,0 +1,5 @@
+<resources>
+    <!-- Hintergrundfarbe des adaptiven Launcher-Icons, entspricht dem Teal
+         aus klarcash-icon.svg (Icon-Quelle: C:/Users/Gromran/PycharmProjects/icons/). -->
+    <color name="ic_launcher_background">#0F6E56</color>
+</resources>
