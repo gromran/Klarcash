@@ -15,6 +15,9 @@ ausgaben.db
 # --- Claude Code (lokal) ---
 .claude/
 
+# --- Windows-Desktop: PyInstaller-Build ---
+desktop_build/
+
 # --- Android: Build & lokale Configs ---
 android/.gradle/
 android/.kotlin/

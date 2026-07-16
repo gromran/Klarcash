@@ -11,12 +11,14 @@ Start fuehrt automatisch zur Ersteinrichtung (/ersteinrichtung).
 from datetime import date, datetime
 from calendar import month_name
 from functools import wraps
+from pathlib import Path
 import argparse
 import csv
 import io
 import re
 import secrets
 import socket
+import sys
 
 from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -24,6 +26,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import db
 
 SECRET_KEY_PATH = db.DB_PATH.parent / ".secret_key"
+
+# In einem PyInstaller-Build liegen templates/ und static/ nicht neben dieser
+# Datei, sondern im Entpack-Verzeichnis sys._MEIPASS (siehe desktop.py).
+if getattr(sys, "frozen", False):
+    _RESOURCE_DIR = Path(sys._MEIPASS)
+else:
+    _RESOURCE_DIR = Path(__file__).parent
 
 
 def _load_or_create_secret_key():
@@ -37,7 +46,11 @@ def _load_or_create_secret_key():
     return key
 
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    template_folder=str(_RESOURCE_DIR / "templates"),
+    static_folder=str(_RESOURCE_DIR / "static"),
+)
 app.secret_key = _load_or_create_secret_key()
 
 MONTHS_DE = [

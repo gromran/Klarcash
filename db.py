@@ -29,7 +29,10 @@ DB_PATH = Path(__file__).parent / "ausgaben.db"
 # 3.1.0: Appearance erfasst jetzt auch Sidebar/mobile Topbar (folgen der
 # gewaehlten Hintergrundfarbe) und waehlt Text-/Button-Kontrast automatisch
 # (app.py::_auto_text_color) - keine Schema-Aenderung.
-APP_VERSION = "3.1.0"
+# 3.2.0: Windows-Desktop-Launcher (desktop.py, klarcash.spec) - Flask-Server
+# in nativem pywebview-Fenster statt Browser, DB/Secret-Key unter
+# %APPDATA%\Klarcash - keine Schema-Aenderung.
+APP_VERSION = "3.2.0"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
