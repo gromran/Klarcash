@@ -285,6 +285,9 @@ Aus einer früheren Ideensammlung im Chat, noch nicht umgesetzt:
 - Sparquote als KPI
 - CSV-Import von Bank-Kontoauszügen mit Regel-basierter Kategorie-Zuordnung
 - Remote DB/Sync (siehe `ROADMAP.md`, Punkt 3)
+- Geteilte Konten: ein Konto (gemeinsames Girokonto) für mehrere Nutzer
+  freigeben, mit Rollen (nur lesen / lesen+schreiben) und geteiltem
+  Kategoriensatz (siehe `ROADMAP.md`, Punkt 5)
 
 ## Konventionen für Weiterarbeit
 

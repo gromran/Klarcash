@@ -13,7 +13,8 @@ Remote DB / Sync → Ersteinrichtung. Tatsächlich wurden zuerst **Nutzerver-
 waltung** und eine **einfache Ersteinrichtung** umgesetzt (ohne die
 Remote-DB/Sync-Wahl aus Punkt 4, da Punkt 3 noch nicht existiert), danach
 der **Settings-Tab** (Punkt 1, Version 3.0.0) - Remote DB / Sync (Punkt 3)
-ist damit der verbleibende naechste Schritt.
+und **Geteilte Konten** (Punkt 5, neu) sind damit die verbleibenden offenen
+Ausbaustufen, unabhängig voneinander umsetzbar.
 
 ## 1. Settings-Tab ✅ umgesetzt (Version 3.0.0)
 
@@ -128,6 +129,79 @@ Dashboard.
 Datenhaltung: lokal oder Remote-DB/Sync verbinden" - setzt Punkt 3 voraus,
 das noch nicht existiert. Sobald Remote DB/Sync (Punkt 3) umgesetzt ist,
 kann dieser Schritt in `/ersteinrichtung` ergänzt werden.
+
+## 5. Geteilte Konten (gemeinsames Girokonto)
+
+**Ziel:** Ein einzelnes Konto (`accounts`) für mehrere Nutzer freigeben,
+z. B. ein gemeinsames Girokonto von Partnern — beide sehen denselben
+Kontostand, dieselben Buchungen und können (je nach Rolle) buchen. Hebt die
+bisher strikte Pro-Nutzer-Isolation für *ausgewählte* Konten gezielt auf,
+ohne die Isolation der übrigen (privaten) Konten anzutasten.
+
+**Datenmodell (geplant):**
+- Neue Verknüpfungstabelle `account_members` (`account_id → accounts.id`,
+  `user_id → users.id`, `role TEXT CHECK(role IN ('read','write'))`,
+  `PRIMARY KEY (account_id, user_id)`). `accounts.user_id` bleibt als
+  **Eigentümer** (Ersteller, implizit `write` + darf teilen/entziehen).
+- Zugriff auf ein Konto = Eigentümer **oder** Eintrag in `account_members`.
+  Der bisherige Filter `WHERE accounts.user_id = ?` wird zu einer
+  Sichtbarkeit "eigene **plus** geteilte Konten" (LEFT JOIN/`UNION` gegen
+  `account_members`) — betrifft `db.accounts_with_balances`,
+  `db.account_balance` und alle Konto-Auswahllisten.
+- Buchungen: `transactions.user_id` bleibt der **buchende** Nutzer (Autor),
+  aber Sichtbarkeit/IDOR wird auf **Konto-Mitgliedschaft** umgestellt statt
+  auf `transactions.user_id`. Die Salden-Query darf dann **nicht** mehr
+  Buchungs-Summen an `user_id = a.user_id` koppeln (heute in
+  `db.account_balance`) — sonst zählen Buchungen des Partners nicht mit.
+
+**Berechtigung (Besitzer + Rollen):** Der Eigentümer teilt das Konto mit
+einem anderen Nutzer (per Nutzername) und vergibt die Rolle `read`
+(nur sehen) oder `write` (sehen + buchen/bearbeiten/löschen).
+`write`-Mitglieder dürfen Buchungen anlegen/ändern, aber **nicht** das
+Konto archivieren, umbenennen oder Freigaben verwalten — das bleibt beim
+Eigentümer. Alle bestehenden `<int:id>`-Ownership-Prüfungen
+(`WHERE id = ? AND user_id = ?`) und die Formular-IDOR-Prüfungen
+(`_validate_transaction_ownership`, `_validate_items_ownership` in
+`app.py`) müssen von "ist Eigentümer" auf "ist Mitglied mit passender
+Rolle" umgestellt werden.
+
+**Kategorien (geteilter Kategoriensatz):** Buchungen auf einem geteilten
+Konto brauchen Kategorien, die **beide** Partner nutzen können — heute sind
+Kategorien pro Nutzer (`categories.user_id`, `UNIQUE(user_id, name)`).
+Geplant: geteilte Konten bekommen einen **gemeinsamen Kategoriensatz**,
+z. B. über ein optionales `categories.account_id` (Kategorie gehört dann
+dem Konto statt einem Nutzer) und eine erweiterte Eindeutigkeit
+(`UNIQUE(user_id, name)` **und** `UNIQUE(account_id, name)`). Buchungen auf
+dem geteilten Konto (und ihre `transaction_items`) referenzieren die
+Konto-Kategorien; private Konten bleiben bei den Nutzer-Kategorien. Der
+`FLATTENED_CTE`-Auswertungspfad (Berichte/Statistik mit Posten) muss die
+Konto-Kategorien einbeziehen.
+
+**UI/Routen (geplant):** Neuer Bereich in der Kontenverwaltung
+(`templates/accounts.html`/`account_form.html`), z. B. `GET/POST
+/konten/<id>/teilen` (Mitglied per Nutzername + Rolle hinzufügen),
+`POST /konten/<id>/teilen/<user_id>/entfernen`, Rollen-Wechsel. Nur der
+Eigentümer sieht/nutzt diese Aktionen. Geteilte Konten im Dashboard/den
+Listen kennzeichnen (Badge "geteilt", ggf. mit Eigentümer/Mitglieder).
+
+**Auswirkung auf die Kern-Invariante:** Dies ist der erste bewusste Bruch
+der Regel "**Alle** Queries auf `accounts`/`categories`/`transactions`
+filtern auf `user_id`" (PROJECT.md). Sauber umsetzen heißt: einen zentralen
+Helfer einführen (z. B. `db.visible_account_ids(user_id)` bzw.
+`db.user_can_access_account(user_id, account_id, need_write=…)`) und
+konsequent überall statt des rohen `user_id`-Filters verwenden — sonst
+entstehen Sicht-Lücken oder IDOR-Regressionen. Die Isolation privater
+Konten muss dabei unverändert bleiben.
+
+**Abhängigkeit / Aufwand:** Unabhängig von Punkt 3 (Remote DB / Sync).
+Schema-Änderung → **Major-Bump auf `4.0.0`** (aktuell `3.2.0`), inkl.
+`_migrate()`-Erweiterung (neue `account_members`-Tabelle, `categories`-
+Rebuild für das zusätzliche `UNIQUE`/`account_id` — analog dem 2.0.0-
+Rebuild, mit `PRAGMA foreign_keys=OFF` + `legacy_alter_table=ON`). Höherer
+Aufwand als die bisherigen Punkte, weil die zentrale Isolations-Invariante
+angefasst wird; entsprechend viele Tests (Isolation privat vs. geteilt,
+Rollen `read`/`write`, IDOR gegen Nicht-Mitglieder, Salden mit Buchungen
+beider Partner). Bump vorab explizit ankündigen (Major).
 
 ---
 
