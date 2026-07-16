@@ -24,7 +24,12 @@ DB_PATH = Path(__file__).parent / "ausgaben.db"
 # dafuer noetigen Tabellen-Rebuild von categories.
 # 2.0.1: App umbenannt von "Hauptbuch" zu "Klarcash" (nur Anzeige/Branding,
 # keine Schema-Aenderung).
-APP_VERSION = "2.0.1"
+# 3.0.0: neue settings-Tabelle (per-Nutzer Key/Value) fuer den Settings-Tab
+# (Account/Appearance, siehe app.py-Route /einstellungen).
+# 3.1.0: Appearance erfasst jetzt auch Sidebar/mobile Topbar (folgen der
+# gewaehlten Hintergrundfarbe) und waehlt Text-/Button-Kontrast automatisch
+# (app.py::_auto_text_color) - keine Schema-Aenderung.
+APP_VERSION = "3.1.0"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -83,6 +88,16 @@ CREATE TABLE IF NOT EXISTS transaction_items (
     amount REAL NOT NULL,
     category_id INTEGER REFERENCES categories(id),
     position INTEGER NOT NULL DEFAULT 0
+);
+
+-- Freie Key/Value-Ablage je Nutzer (Settings-Tab: Account/Appearance).
+-- Unbekannte Keys werden von get_settings() einfach mitgeliefert, ungesetzte
+-- fehlen im Ergebnis-Dict (App-seitig werden dafuer Defaults angewendet).
+CREATE TABLE IF NOT EXISTS settings (
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    key     TEXT NOT NULL,
+    value   TEXT NOT NULL,
+    PRIMARY KEY (user_id, key)
 );
 """
 
@@ -264,6 +279,21 @@ def _migrate(conn):
     elif "parent_id" not in cat_cols:
         conn.execute("ALTER TABLE categories ADD COLUMN parent_id INTEGER REFERENCES categories(id)")
 
+    # settings ist eine reine Neu-Tabelle (kein Rebuild/Backfill noetig) -
+    # das CREATE TABLE steht bereits in SCHEMA (via executescript in
+    # migrate()), diese Zeile ist nur zur Klarheit hier dupliziert, falls
+    # _migrate() jemals unabhaengig von SCHEMA aufgerufen wird.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS settings (
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            key     TEXT NOT NULL,
+            value   TEXT NOT NULL,
+            PRIMARY KEY (user_id, key)
+        )
+        """
+    )
+
     conn.execute("PRAGMA legacy_alter_table = OFF")
     conn.execute("PRAGMA foreign_keys = ON")
 
@@ -351,6 +381,14 @@ def delete_user(conn, user_id):
 
 def set_password(conn, user_id, password_hash):
     conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user_id))
+
+
+def set_username(conn, user_id, username):
+    """Aendert den Benutzernamen. Eindeutigkeit (users.username ist UNIQUE)
+    prueft der Aufrufer vorab ueber get_user_by_username(), damit eine
+    Kollision als normaler Formularfehler statt als DB-Exception behandelt
+    werden kann."""
+    conn.execute("UPDATE users SET username = ? WHERE id = ?", (username, user_id))
 
 
 def user_has_data(conn, user_id):
@@ -646,3 +684,25 @@ def net_worth_series(conn, user_id):
         running += r["net"]
         series.append({"date": r["date"], "total": running})
     return start_total, series
+
+
+# --------------------------------------------------------- Einstellungen
+
+def get_settings(conn, user_id):
+    """Liefert alle gespeicherten Settings eines Nutzers als dict {key: value}.
+    Nicht gesetzte Keys fehlen im Ergebnis - der Aufrufer (app.py) wendet
+    dafuer Defaults an, siehe Appearance-Kontextprozessor."""
+    rows = conn.execute(
+        "SELECT key, value FROM settings WHERE user_id = ?", (user_id,)
+    ).fetchall()
+    return {r["key"]: r["value"] for r in rows}
+
+
+def set_setting(conn, user_id, key, value):
+    conn.execute(
+        """
+        INSERT INTO settings (user_id, key, value) VALUES (?, ?, ?)
+        ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value
+        """,
+        (user_id, key, value),
+    )

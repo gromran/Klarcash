@@ -22,7 +22,7 @@ GET_ROUTEN = [
     "/migration",
     "/nutzer",  # client ist per initialized_db-Fixture ein Admin
     "/nutzer/neu",
-    "/profil",
+    "/einstellungen",
 ]
 
 

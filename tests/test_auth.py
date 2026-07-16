@@ -182,7 +182,12 @@ def test_logout_beendet_die_session(client):
     assert client.get("/").status_code == 302
 
 
-# ------------------------------------------------------------- Profil
+# ------------------------------------------------------ Einstellungen (Account)
+#
+# /profil ist seit Version 3.0.0 im Settings-Tab (/einstellungen) aufgegangen
+# (Account-Tab: Nutzername + Passwort). Der alte Endpoint bleibt als reiner
+# Redirect fuer Altlinks/Bookmarks bestehen (siehe test_profil_leitet_weiter
+# unten).
 
 def _client_with_user(username, password):
     from werkzeug.security import generate_password_hash
@@ -198,11 +203,21 @@ def _client_with_user(username, password):
     return c, uid
 
 
-def test_profil_passwort_aendern(isolated_db):
+def test_profil_leitet_auf_einstellungen_weiter(isolated_db):
+    c, uid = _client_with_user("anna", "altes-passwort")
+    resp = c.get("/profil")
+
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/einstellungen"
+
+
+def test_einstellungen_passwort_aendern(isolated_db):
     from werkzeug.security import check_password_hash
 
     c, uid = _client_with_user("anna", "altes-passwort")
-    resp = c.post("/profil", data={
+    resp = c.post("/einstellungen", data={
+        "section": "account",
+        "username": "anna",
         "current_password": "altes-passwort",
         "new_password": "neues-passwort",
         "new_password_confirm": "neues-passwort",
@@ -214,9 +229,11 @@ def test_profil_passwort_aendern(isolated_db):
     assert check_password_hash(user["password_hash"], "neues-passwort")
 
 
-def test_profil_lehnt_falsches_altes_passwort_ab(isolated_db):
+def test_einstellungen_lehnt_falsches_altes_passwort_ab(isolated_db):
     c, uid = _client_with_user("anna", "altes-passwort")
-    resp = c.post("/profil", data={
+    resp = c.post("/einstellungen", data={
+        "section": "account",
+        "username": "anna",
         "current_password": "falsch",
         "new_password": "neues-passwort",
         "new_password_confirm": "neues-passwort",
@@ -225,9 +242,11 @@ def test_profil_lehnt_falsches_altes_passwort_ab(isolated_db):
     assert "aktuelle Passwort ist falsch" in resp.get_data(as_text=True)
 
 
-def test_profil_validiert_neues_passwort(isolated_db):
+def test_einstellungen_validiert_neues_passwort(isolated_db):
     c, uid = _client_with_user("anna", "altes-passwort")
-    resp = c.post("/profil", data={
+    resp = c.post("/einstellungen", data={
+        "section": "account",
+        "username": "anna",
         "current_password": "altes-passwort",
         "new_password": "kurz",
         "new_password_confirm": "kurz",
@@ -236,12 +255,111 @@ def test_profil_validiert_neues_passwort(isolated_db):
     assert "mindestens 8 Zeichen" in resp.get_data(as_text=True)
 
 
-def test_profil_lehnt_abweichende_bestaetigung_ab(isolated_db):
+def test_einstellungen_lehnt_abweichende_bestaetigung_ab(isolated_db):
     c, uid = _client_with_user("anna", "altes-passwort")
-    resp = c.post("/profil", data={
+    resp = c.post("/einstellungen", data={
+        "section": "account",
+        "username": "anna",
         "current_password": "altes-passwort",
         "new_password": "neues-passwort",
         "new_password_confirm": "anderes-passwort",
     })
 
     assert "stimmen nicht überein" in resp.get_data(as_text=True)
+
+
+def test_einstellungen_passwort_bleibt_ohne_eingabe_unveraendert(isolated_db):
+    """Leere Passwortfelder aendern nur den Nutzernamen, das Passwort bleibt
+    unangetastet - anders als /profil frueher verlangt /einstellungen das
+    aktuelle Passwort nur, wenn tatsaechlich ein neues gesetzt wird."""
+    from werkzeug.security import check_password_hash
+
+    c, uid = _client_with_user("anna", "altes-passwort")
+    resp = c.post("/einstellungen", data={"section": "account", "username": "anna2"})
+
+    assert resp.status_code == 302
+    with db.db_session() as conn:
+        user = db.get_user_by_id(conn, uid)
+    assert user["username"] == "anna2"
+    assert check_password_hash(user["password_hash"], "altes-passwort")
+
+
+def test_einstellungen_lehnt_doppelten_benutzernamen_ab(isolated_db):
+    c, uid = _client_with_user("anna", "altes-passwort")
+    with db.db_session() as conn:
+        db.create_user(conn, "bert", "irgendein-hash")
+
+    resp = c.post("/einstellungen", data={"section": "account", "username": "bert"})
+
+    assert "bereits vergeben" in resp.get_data(as_text=True)
+    with db.db_session() as conn:
+        assert db.get_user_by_id(conn, uid)["username"] == "anna"
+
+
+# --------------------------------------------------- Einstellungen (Appearance)
+
+def test_einstellungen_appearance_speichern(isolated_db):
+    c, uid = _client_with_user("anna", "sicheres-passwort")
+    resp = c.post("/einstellungen", data={
+        "section": "appearance",
+        "bg_color": "#112233",
+        "accent_color": "#445566",
+        "font_scale": "1.15",
+    })
+
+    assert resp.status_code == 302
+    with db.db_session() as conn:
+        settings_dict = db.get_settings(conn, uid)
+    assert settings_dict["bg_color"] == "#112233"
+    assert settings_dict["accent_color"] == "#445566"
+    assert settings_dict["font_scale"] == "1.15"
+
+    # Die gespeicherte Farbe taucht im injizierten <style>-Block auf.
+    text = c.get("/").get_data(as_text=True)
+    assert "--paper: #112233;" in text
+    assert "--brand: #445566;" in text
+
+
+def test_einstellungen_appearance_lehnt_ungueltigen_hex_ab(isolated_db):
+    c, uid = _client_with_user("anna", "sicheres-passwort")
+    resp = c.post("/einstellungen", data={
+        "section": "appearance",
+        "bg_color": "not-a-color",
+        "accent_color": "#445566",
+        "font_scale": "1.0",
+    })
+
+    assert "Ungültige Hintergrundfarbe" in resp.get_data(as_text=True)
+    with db.db_session() as conn:
+        assert db.get_settings(conn, uid) == {}
+
+
+def test_einstellungen_appearance_lehnt_ungueltige_schriftgroesse_ab(isolated_db):
+    c, uid = _client_with_user("anna", "sicheres-passwort")
+    resp = c.post("/einstellungen", data={
+        "section": "appearance",
+        "bg_color": "#112233",
+        "accent_color": "#445566",
+        "font_scale": "2.5",
+    })
+
+    assert "Ungültige Schriftgröße" in resp.get_data(as_text=True)
+    with db.db_session() as conn:
+        assert db.get_settings(conn, uid) == {}
+
+
+def test_einstellungen_appearance_ist_je_nutzer_isoliert(isolated_db):
+    c1, _ = _client_with_user("anna", "sicheres-passwort")
+    c1.post("/einstellungen", data={
+        "section": "appearance", "bg_color": "#112233", "accent_color": "#445566", "font_scale": "1.0",
+    })
+
+    with db.db_session() as conn:
+        bert_uid = db.create_user(conn, "bert", "irgendein-hash")
+    c2 = _raw_client()
+    with c2.session_transaction() as s:
+        s["user_id"] = bert_uid
+
+    text = c2.get("/").get_data(as_text=True)
+    assert "--paper: #112233;" not in text
+    assert "--paper: #F7F6F2;" in text  # weiterhin der Default

@@ -50,7 +50,7 @@ templates/
   trash.html                   Papierkorb (Soft-Delete)
   login.html / ersteinrichtung.html   Anmeldung / Ersteinrichtung des ersten Admins
   nutzer.html / nutzer_form.html      Nutzerverwaltung (Admin-only)
-  profil.html                  Eigenes Passwort ändern
+  einstellungen.html           Settings-Tab: Account (Nutzername/Passwort) + Appearance (Farben/Schriftgröße)
   migration.html / version_error.html Schema-Versionsabgleich (siehe "Versionierung & Migration")
 README.md                    Nutzerdokumentation (Setup, Feature-Liste)
 PROJECT.md                   Diese Datei
@@ -92,6 +92,12 @@ transaction_items
   -- Kassenzettel-Posten: optional, mehrere pro Buchung.
   -- amount ist bei Posten NICHT auf > 0 begrenzt (Pfandrückgabe etc.)
   -- KEIN eigenes user_id - Eigentümerschaft erbt sich über transaction_id
+
+settings
+  user_id → users.id, key, value, PRIMARY KEY (user_id, key)
+  -- Freie Key/Value-Ablage je Nutzer (seit Version 3.0.0). Aktuell genutzte
+  -- Keys: bg_color, accent_color, font_scale (Settings-Tab, Appearance) -
+  -- siehe db.get_settings()/db.set_setting() und app.py::_resolve_appearance().
 ```
 
 **Wichtige Invarianten:**
@@ -150,7 +156,8 @@ erreichbar. Bisher migriert (in `_migrate()`, aufgerufen von `migrate()`):
 `users`-Tabelle + `user_id`-Spalten an `accounts`/`transactions` sowie ein
 vollständiger Tabellen-Rebuild von `categories` (Version 2.0.0, siehe
 "Nutzerverwaltung" — SQLite kann ein spaltengebundenes `UNIQUE` nicht per
-`ALTER TABLE` ändern).
+`ALTER TABLE` ändern), sowie die `settings`-Tabelle (Version 3.0.0, reine
+Neuanlage ohne Rebuild/Backfill, siehe "Settings-Tab" in `ROADMAP.md`).
 
 **Bei jeder künftigen Schema-Änderung:**
 1. `APP_VERSION` in `db.py` in der Major-Zahl erhöhen.
@@ -212,7 +219,8 @@ Login ist Pflicht. Zwei `before_request`-Gates laufen nach dem Schema-Gate:
 | Berichte | `GET /berichte` (Query: `gruppierung`, `arten`, `von`, `bis`, `konto`), `GET /berichte/export.csv` |
 | Migration | `GET/POST /migration` (Versionsanzeige + expliziter Migrations-Trigger, siehe Abschnitt "Versionierung & Migration") |
 | Anmeldung | `GET/POST /login`, `POST /logout`, `GET/POST /ersteinrichtung` |
-| Nutzerverwaltung | `GET /nutzer`, `GET/POST /nutzer/neu`, `POST /nutzer/<id>/loeschen` (alle Admin-only), `GET/POST /profil` (Passwort ändern, alle Nutzer) |
+| Nutzerverwaltung | `GET /nutzer`, `GET/POST /nutzer/neu`, `POST /nutzer/<id>/loeschen` (alle Admin-only) |
+| Einstellungen | `GET/POST /einstellungen` (Endpoint `settings`, Tabs Account/Appearance, alle Nutzer); `GET/POST /profil` leitet nur noch auf `/einstellungen` weiter (Altlink) |
 
 **Wichtige Helper-Funktionen in `app.py`:**
 - `_validate_transaction_form(form, items_total=None)` — zentrale Validierung
@@ -258,6 +266,11 @@ Login ist Pflicht. Zwei `before_request`-Gates laufen nach dem Schema-Gate:
    ersten Admins, Mehrbenutzerfähigkeit mit vollständiger Daten-Isolation
    je Nutzer (Konten/Kategorien/Buchungen), Admin-Nutzerverwaltung,
    eigenes Passwort ändern. Siehe Abschnitt "Nutzerverwaltung".
+9. Settings-Tab (Version 3.0.0): zentrale Einstellungsseite `/einstellungen`
+   mit den Tabs Account (Nutzername/Passwort ändern, löst `/profil` ab) und
+   Appearance (frei wählbare Hintergrund-/Akzentfarbe inkl. Sidebar/mobiler
+   Topbar, Schriftgröße, automatischer Text-/Button-Kontrast), je Nutzer in
+   der neuen `settings`-Tabelle persistiert. Siehe `ROADMAP.md`, Punkt 1.
 
 ## Bekannte, bewusst nicht umgesetzte Punkte (Ideen für Weiterentwicklung)
 
@@ -271,7 +284,7 @@ Aus einer früheren Ideensammlung im Chat, noch nicht umgesetzt:
 - Vermögensentwicklung je Konto (statt nur Gesamtsumme)
 - Sparquote als KPI
 - CSV-Import von Bank-Kontoauszügen mit Regel-basierter Kategorie-Zuordnung
-- Settings-Tab und Remote DB/Sync (siehe `ROADMAP.md`, Punkte 1 und 3)
+- Remote DB/Sync (siehe `ROADMAP.md`, Punkt 3)
 
 ## Konventionen für Weiterarbeit
 
@@ -378,3 +391,11 @@ Test steht.
   kann aktuell nur ein Admin über `/nutzer` beheben (Nutzer löschen + neu
   anlegen; ein direktes "Passwort zurücksetzen" für andere Nutzer gibt es
   noch nicht).
+- Appearance-Farbwähler (Settings-Tab) berechnet Text-/Button-Kontrast
+  automatisch (`app.py::_auto_text_color`, Tokens `--paper-ink*`/
+  `--accent-text` in `static/style.css`) - gilt für alles direkt auf
+  `--paper` (Seite, Sidebar, mobile Topbar) sowie für `.btn-primary`.
+  `--surface`-Karten (Formulare, Tabellen, KPI-/Konto-Karten) bleiben
+  bewusst immer hell mit festem `--ink`, u. a. weil die Einnahme-/Ausgabe-
+  Farbcodierung (`--positive`/`--negative`) auf hellem Untergrund ausgelegt
+  ist - dort findet kein Kontrast-Ausgleich statt.

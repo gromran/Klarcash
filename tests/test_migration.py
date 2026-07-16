@@ -130,6 +130,18 @@ def test_migration_alter_datenbank_crasht_nicht(isolated_db):
     assert "user_id" in _columns("categories")
     assert "users" in _tables()
     assert "transaction_items" in _tables()
+    assert "settings" in _tables()
+
+
+def test_migration_legt_settings_tabelle_an(isolated_db):
+    old_schema_db(isolated_db)  # kennt "settings" noch gar nicht
+    db.migrate()
+
+    with db.db_session() as conn:
+        uid = db.create_user(conn, "anna", "hash1")
+        assert db.get_settings(conn, uid) == {}
+        db.set_setting(conn, uid, "bg_color", "#112233")
+        assert db.get_settings(conn, uid) == {"bg_color": "#112233"}
 
 
 def test_migration_erhaelt_altdaten(isolated_db):

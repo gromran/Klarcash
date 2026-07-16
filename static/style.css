@@ -2,18 +2,42 @@
    Palette: warmes Papierweiss, tintiges Grau-Grün, Petrol als Markenfarbe,
    gedecktes Grün/Rot/Ocker für Einnahme/Ausgabe/Umbuchung.
    Typo: Fraunces (Display, Ledger-Serife) / Inter (UI) / IBM Plex Mono (Zahlen, tabellarisch).
+
+   --paper/--brand(-ink/-tint) und --font-scale sind vom Nutzer im Settings-
+   Tab (Appearance) veraenderbar - base.html ueberschreibt sie fuer
+   eingeloggte Nutzer per <style>-Block mit den in db.settings gespeicherten
+   Werten (siehe app.py::_resolve_appearance). Die Werte hier sind nur die
+   Defaults (nicht eingeloggt, oder noch nichts gespeichert).
 */
 :root {
     --paper: #F7F6F2;
     --surface: #FFFFFF;
+    /* --surface-tint ist bewusst von --paper ENTKOPPELT: ein fester, immer
+       heller Farbton fuer "eingelassene" Flaechen INNERHALB weisser Karten
+       (Formularfelder, Tabellenkopf, Fortschrittsbalken-Track, Badges) - im
+       Unterschied zu --paper (Seiten-/Sidebar-Hintergrund) darf er sich NICHT
+       mit der frei waehlbaren Appearance-Hintergrundfarbe aendern, sonst
+       waeren z. B. Formularfelder bei dunklem --paper dunkel-auf-dunkel. */
+    --surface-tint: #F7F6F2;
     --ink: #1C2321;
     --ink-soft: #5B655F;
+    /* --paper-ink(-soft)/--paper-hover: automatisch kontrastierender Text/
+       Hover-Ton fuer Flaechen, die die dynamische --paper-Farbe tragen
+       (Seiteninhalt, Sidebar, mobile Topbar) - siehe app.py::_resolve_appearance
+       (_auto_text_color). Defaults hier entsprechen exakt --ink/--ink-soft/
+       --paper, damit die Standardoptik unveraendert bleibt. */
+    --paper-ink: #1C2321;
+    --paper-ink-soft: #5B655F;
+    --paper-hover: #F7F6F2;
     --border: #E1DED4;
     --border-strong: #C9C4B5;
 
     --brand: #1F5F5B;
     --brand-ink: #143E3B;
     --brand-tint: #E7F0EE;
+    /* Automatisch kontrastierende Button-Textfarbe (siehe _auto_text_color) -
+       Default entspricht dem bisherigen hartkodierten "#fff". */
+    --accent-text: #fff;
 
     --positive: #2E7D5B;
     --positive-tint: #E7F3EC;
@@ -27,6 +51,7 @@
     --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
     --radius: 6px;
+    --font-scale: 1;
 }
 
 * { box-sizing: border-box; }
@@ -34,9 +59,9 @@
 body {
     margin: 0;
     background: var(--paper);
-    color: var(--ink);
+    color: var(--paper-ink);
     font-family: var(--font-body);
-    font-size: 14.5px;
+    font-size: calc(14.5px * var(--font-scale));
     line-height: 1.5;
 }
 
@@ -49,8 +74,11 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ---------------- Sidebar ---------------- */
+/* Sidebar-Hintergrund folgt bewusst --paper (nicht --surface): Teil der
+   Appearance-Einstellung, damit die gewaehlte Hintergrundfarbe auch die
+   Seitenleiste/das mobile Menue erfasst (siehe .topbar weiter unten). */
 .sidebar {
-    background: var(--surface);
+    background: var(--paper);
     border-right: 1px solid var(--border);
     padding: 28px 20px;
     display: flex;
@@ -64,6 +92,8 @@ a { color: inherit; text-decoration: none; }
     gap: 8px;
 }
 
+/* Markenschriftgroesse bewusst NICHT an --font-scale gekoppelt - das
+   Logo soll unabhaengig von der Textgroessen-Einstellung stabil wirken. */
 .brand-mark {
     font-family: var(--font-display);
     font-size: 26px;
@@ -86,12 +116,12 @@ a { color: inherit; text-decoration: none; }
 .nav a {
     padding: 9px 12px;
     border-radius: var(--radius);
-    color: var(--ink-soft);
+    color: var(--paper-ink-soft);
     font-weight: 500;
-    font-size: 14px;
+    font-size: calc(14px * var(--font-scale));
 }
 
-.nav a:hover { background: var(--paper); color: var(--ink); }
+.nav a:hover { background: var(--paper-hover); color: var(--paper-ink); }
 .nav a.active { background: var(--brand-tint); color: var(--brand-ink); }
 
 .sidebar-cta { margin-top: auto; }
@@ -102,28 +132,28 @@ a { color: inherit; text-decoration: none; }
     justify-content: space-between;
     gap: 8px;
     padding: 0 12px;
-    font-size: 13px;
-    color: var(--ink-soft);
+    font-size: calc(13px * var(--font-scale));
+    color: var(--paper-ink-soft);
 }
 
-.sidebar-username { font-weight: 500; color: var(--ink); }
+.sidebar-username { font-weight: 500; color: var(--paper-ink); }
 
 .link-button {
     background: none;
     border: none;
     padding: 0;
     font: inherit;
-    font-size: 13px;
-    color: var(--ink-soft);
+    font-size: calc(13px * var(--font-scale));
+    color: var(--paper-ink-soft);
     cursor: pointer;
     text-decoration: underline;
 }
-.link-button:hover { color: var(--ink); }
+.link-button:hover { color: var(--paper-ink); }
 
 .sidebar-version {
     font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--ink-soft);
+    font-size: calc(11px * var(--font-scale));
+    color: var(--paper-ink-soft);
     text-align: center;
 }
 
@@ -146,22 +176,22 @@ a { color: inherit; text-decoration: none; }
 
 h1 {
     font-family: var(--font-display);
-    font-size: 30px;
+    font-size: calc(30px * var(--font-scale));
     font-weight: 600;
     margin: 0 0 4px;
 }
 
 h2 {
     font-family: var(--font-display);
-    font-size: 19px;
+    font-size: calc(19px * var(--font-scale));
     font-weight: 600;
     margin: 0 0 14px;
 }
 
-.subtitle { color: var(--ink-soft); margin: 0 0 28px; font-size: 14.5px; }
+.subtitle { color: var(--paper-ink-soft); margin: 0 0 28px; font-size: calc(14.5px * var(--font-scale)); }
 
 .eyebrow {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--font-scale));
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--ink-soft);
@@ -176,8 +206,14 @@ h2 {
     margin-bottom: 32px;
 }
 
+/* color: var(--ink) faengt hier bewusst die Text-Vererbung ab: body setzt
+   seit der Appearance-Kontrastberechnung var(--paper-ink) (kann hell ODER
+   dunkel sein), --surface-Karten bleiben aber IMMER hell -> Inhalte ohne
+   eigene color-Angabe (z. B. .kpi .value) muessen auf dem festen --ink
+   bleiben, sonst waere der Text bei dunklem --paper unlesbar (hell-auf-hell). */
 .kpi {
     background: var(--surface);
+    color: var(--ink);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 16px 18px;
@@ -188,7 +224,7 @@ h2 {
 .kpi .value {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
-    font-size: 22px;
+    font-size: calc(22px * var(--font-scale));
     font-weight: 500;
 }
 
@@ -205,6 +241,7 @@ h2 {
 
 .account-card {
     background: var(--surface);
+    color: var(--ink);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 16px 18px;
@@ -213,7 +250,7 @@ h2 {
 
 .account-card .type-tag {
     display: inline-block;
-    font-size: 11px;
+    font-size: calc(11px * var(--font-scale));
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-weight: 600;
@@ -226,7 +263,7 @@ h2 {
 
 .account-card .name {
     font-family: var(--font-display);
-    font-size: 17px;
+    font-size: calc(17px * var(--font-scale));
     font-weight: 600;
     margin-bottom: 6px;
 }
@@ -234,7 +271,7 @@ h2 {
 .account-card .balance {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
-    font-size: 20px;
+    font-size: calc(20px * var(--font-scale));
 }
 
 .account-card.archived { opacity: 0.55; }
@@ -244,6 +281,7 @@ table.ledger {
     width: 100%;
     border-collapse: collapse;
     background: var(--surface);
+    color: var(--ink);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     overflow: hidden;
@@ -251,25 +289,25 @@ table.ledger {
 
 table.ledger th {
     text-align: left;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--font-scale));
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--ink-soft);
     font-weight: 600;
     padding: 10px 14px;
     border-bottom: 1px solid var(--border-strong);
-    background: var(--paper);
+    background: var(--surface-tint);
 }
 
 table.ledger td {
     padding: 11px 14px;
     border-bottom: 1px dashed var(--border);
-    font-size: 14px;
+    font-size: calc(14px * var(--font-scale));
     vertical-align: middle;
 }
 
 table.ledger tbody tr:last-child td { border-bottom: none; }
-table.ledger tbody tr:hover { background: var(--paper); }
+table.ledger tbody tr:hover { background: var(--surface-tint); }
 
 td.amount, .amount {
     font-family: var(--font-mono);
@@ -284,7 +322,7 @@ td.amount, .amount {
 
 .pill {
     display: inline-block;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--font-scale));
     font-weight: 600;
     padding: 2px 9px;
     border-radius: 999px;
@@ -295,7 +333,7 @@ td.amount, .amount {
 .pill.Umbuchung { background: var(--transfer-tint); color: var(--transfer); }
 
 .pill.items-badge {
-    background: var(--paper);
+    background: var(--surface-tint);
     color: var(--ink-soft);
     border: 1px solid var(--border-strong);
     font-weight: 500;
@@ -305,6 +343,7 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
 /* ---------------- Forms ---------------- */
 .form-card {
     background: var(--surface);
+    color: var(--ink);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 26px 28px;
@@ -315,7 +354,7 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
 
 .field label {
     display: block;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--font-scale));
     font-weight: 600;
     color: var(--ink-soft);
     margin-bottom: 6px;
@@ -327,9 +366,15 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
     border: 1px solid var(--border-strong);
     border-radius: var(--radius);
     font-family: var(--font-body);
-    font-size: 14px;
-    background: var(--paper);
+    font-size: calc(14px * var(--font-scale));
+    background: var(--surface-tint);
     color: var(--ink);
+}
+
+.field input[type="color"] {
+    padding: 4px 6px;
+    height: 40px;
+    cursor: pointer;
 }
 
 .field input:focus, .field select:focus, .field textarea:focus {
@@ -353,7 +398,7 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
     border: 1px solid var(--border-strong);
     border-radius: var(--radius);
     cursor: pointer;
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--font-scale));
     font-weight: 600;
     color: var(--ink-soft);
 }
@@ -365,9 +410,42 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
 .type-toggle label:has(input:checked)[data-kind="Ausgabe"] { background: var(--negative-tint); color: var(--negative); }
 .type-toggle label:has(input:checked)[data-kind="Umbuchung"] { background: var(--transfer-tint); color: var(--transfer); }
 
+/* ---------------- Tabs (Einstellungen) ---------------- */
+.tab-radio { display: none; }
+
+.tab-bar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--border);
+}
+
+.tab-label {
+    padding: 10px 18px;
+    margin-bottom: -1px;
+    cursor: pointer;
+    font-size: calc(13.5px * var(--font-scale));
+    font-weight: 600;
+    color: var(--paper-ink-soft);
+    border-bottom: 2px solid transparent;
+}
+
+.tab-label:hover { color: var(--paper-ink); }
+
+.tab-panel { display: none; }
+
+#tab-account:checked ~ .tab-bar label[for="tab-account"],
+#tab-appearance:checked ~ .tab-bar label[for="tab-appearance"] {
+    color: var(--brand-ink);
+    border-bottom-color: var(--brand);
+}
+
+#tab-account:checked ~ #panel-account { display: block; }
+#tab-appearance:checked ~ #panel-appearance { display: block; }
+
 /* ---------------- Kassenzettel-Posten ---------------- */
 .items-table-wrap {
-    background: var(--paper);
+    background: var(--surface-tint);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 14px;
@@ -377,7 +455,7 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
 
 .items-edit-table th {
     text-align: left;
-    font-size: 11px;
+    font-size: calc(11px * var(--font-scale));
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--ink-soft);
@@ -393,7 +471,7 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
     border: 1px solid var(--border-strong);
     border-radius: 4px;
     font-family: var(--font-body);
-    font-size: 13px;
+    font-size: calc(13px * var(--font-scale));
     background: var(--surface);
     color: var(--ink);
 }
@@ -408,7 +486,7 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
     text-align: right;
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
-    font-size: 14px;
+    font-size: calc(14px * var(--font-scale));
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px dashed var(--border-strong);
@@ -417,7 +495,7 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
 /* ---------------- Inline-Kategorie-Anlage ---------------- */
 .category-child-row { display: flex; gap: 6px; align-items: center; }
 .category-child-row select { flex: 1; }
-.new-category-btn { flex: none; padding: 6px 10px; font-size: 13px; line-height: 1; }
+.new-category-btn { flex: none; padding: 6px 10px; font-size: calc(13px * var(--font-scale)); line-height: 1; }
 .new-category-inline { display: flex; gap: 6px; margin-top: 6px; }
 .new-category-inline input {
     flex: 1;
@@ -425,19 +503,19 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
     border: 1px solid var(--border-strong);
     border-radius: 4px;
     font-family: var(--font-body);
-    font-size: 13px;
+    font-size: calc(13px * var(--font-scale));
     background: var(--surface);
     color: var(--ink);
 }
-.new-category-inline .btn-sm { flex: none; padding: 6px 10px; font-size: 12.5px; }
-.new-category-error { color: var(--negative); font-size: 12px; margin-top: 4px; }
+.new-category-inline .btn-sm { flex: none; padding: 6px 10px; font-size: calc(12.5px * var(--font-scale)); }
+.new-category-error { color: var(--negative); font-size: calc(12px * var(--font-scale)); margin-top: 4px; }
 
 /* ---------------- Buttons ---------------- */
 .btn {
     display: inline-block;
     padding: 9px 16px;
     border-radius: var(--radius);
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--font-scale));
     font-weight: 600;
     border: 1px solid var(--border-strong);
     background: var(--surface);
@@ -451,7 +529,7 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
 .btn-primary {
     background: var(--brand);
     border-color: var(--brand);
-    color: #fff;
+    color: var(--accent-text);
 }
 .btn-primary:hover { background: var(--brand-ink); border-color: var(--brand-ink); }
 
@@ -478,7 +556,7 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
     justify-content: space-between;
     align-items: center;
     margin-top: 14px;
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--font-scale));
 }
 
 .pagination-links { display: flex; gap: 8px; }
@@ -489,7 +567,7 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
 .flash {
     padding: 10px 14px;
     border-radius: var(--radius);
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--font-scale));
     font-weight: 500;
 }
 
@@ -497,16 +575,20 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
 .flash-error { background: var(--negative-tint); color: var(--negative); }
 
 /* ---------------- Empty state ---------------- */
+/* Steht in allen Templates direkt im .content-Fluss (nie in einer
+   --surface-Karte) - folgt daher wie Ueberschriften/Sidebar der
+   automatisch kontrastierenden Paper-Textfarbe. */
 .empty-state {
     padding: 40px 20px;
     text-align: center;
-    color: var(--ink-soft);
-    font-size: 14px;
+    color: var(--paper-ink-soft);
+    font-size: calc(14px * var(--font-scale));
 }
 
 /* ---------------- Statistiken ---------------- */
 .chart-card {
     background: var(--surface);
+    color: var(--ink);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 20px 22px;
@@ -525,7 +607,7 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
     gap: 36px;
 }
 
-.cat-table td { border-bottom: 1px dashed var(--border); padding: 8px 10px; font-size: 13.5px; }
+.cat-table td { border-bottom: 1px dashed var(--border); padding: 8px 10px; font-size: calc(13.5px * var(--font-scale)); }
 .cat-table tbody tr:last-child td { border-bottom: none; }
 
 .cat-swatch { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
@@ -543,7 +625,7 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
 .bar-track {
     width: 100%;
     height: 6px;
-    background: var(--paper);
+    background: var(--surface-tint);
     border-radius: 999px;
     overflow: hidden;
 }
@@ -563,12 +645,13 @@ form.inline { display: inline; }
 /* Topbar / Hamburger — hidden on desktop */
 .nav-toggle-input { display: none; }
 
+/* Topbar-Hintergrund folgt wie .sidebar --paper (mobile Menue-Leiste). */
 .topbar {
     display: none;
     align-items: center;
     justify-content: space-between;
     padding: 14px 20px;
-    background: var(--surface);
+    background: var(--paper);
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
@@ -585,7 +668,7 @@ form.inline { display: inline; }
     cursor: pointer;
     border-radius: var(--radius);
 }
-.nav-burger:hover { background: var(--paper); }
+.nav-burger:hover { background: var(--paper-hover); }
 
 .nav-backdrop {
     display: none;
@@ -643,7 +726,7 @@ form.inline { display: inline; }
 
     .field input, .field select, .field textarea,
     .items-edit-table input, .items-edit-table select {
-        font-size: 16px; /* verhindert Auto-Zoom auf iOS */
+        font-size: 16px; /* verhindert Auto-Zoom auf iOS - bewusst NICHT skaliert */
     }
 
     .btn { padding: 11px 16px; }
@@ -688,7 +771,7 @@ form.inline { display: inline; }
     table.ledger:not(.cat-table) td[data-label]:not([data-label=""])::before {
         content: attr(data-label);
         display: block;
-        font-size: 11px;
+        font-size: calc(11px * var(--font-scale));
         text-transform: uppercase;
         letter-spacing: 0.05em;
         color: var(--ink-soft);

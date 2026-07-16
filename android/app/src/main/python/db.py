@@ -24,7 +24,12 @@ DB_PATH = Path(__file__).parent / "ausgaben.db"
 # dafuer noetigen Tabellen-Rebuild von categories.
 # 2.0.1: App umbenannt von "Hauptbuch" zu "Klarcash" (nur Anzeige/Branding,
 # keine Schema-Aenderung).
-APP_VERSION = "2.0.1"
+# 3.0.0: neue settings-Tabelle (per-Nutzer Key/Value) fuer den Settings-Tab
+# (Account/Appearance, siehe app.py-Route /einstellungen).
+# 3.1.0: Appearance erfasst jetzt auch Sidebar/mobile Topbar (folgen der
+# gewaehlten Hintergrundfarbe) und waehlt Text-/Button-Kontrast automatisch
+# (app.py::_auto_text_color) - keine Schema-Aenderung.
+APP_VERSION = "3.1.0"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (

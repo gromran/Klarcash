@@ -14,6 +14,7 @@ from functools import wraps
 import argparse
 import csv
 import io
+import re
 import secrets
 import socket
 
@@ -64,6 +65,121 @@ def current_user():
 @app.context_processor
 def _inject_current_user():
     return {"current_user": current_user()}
+
+
+# ---------------------------------------------------------- Appearance
+
+APPEARANCE_DEFAULTS = {
+    "bg_color": "#F7F6F2",
+    "accent_color": "#1F5F5B",
+    "font_scale": "1.0",
+}
+
+FONT_SCALE_OPTIONS = [
+    ("0.9", "Klein"),
+    ("1.0", "Normal"),
+    ("1.15", "Groß"),
+    ("1.3", "Sehr groß"),
+]
+FONT_SCALE_VALUES = {value for value, _ in FONT_SCALE_OPTIONS}
+
+HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+# Feste Anker fuer automatischen Text-Kontrast (siehe _auto_text_color) -
+# entsprechen bewusst den bisherigen festen Werten von --ink bzw. dem
+# hartkodierten Button-Weiss, damit die Standardoptik (Default-Farben)
+# durch die Kontrastberechnung unveraendert bleibt.
+DARK_TEXT = "#1C2321"
+LIGHT_TEXT = "#FFFFFF"
+
+
+def _hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip("#")
+    return int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+
+
+def _luminance(hex_color):
+    """Wahrgenommene Helligkeit (ITU-R BT.601, gamma-unkorrigiert) einer
+    #RRGGBB-Farbe als Wert 0..1 - fuer eine simple Hell/Dunkel-Entscheidung
+    (Kontrasttext waehlen) ausreichend genau, ohne weitere Abhaengigkeiten."""
+    r, g, b = _hex_to_rgb(hex_color)
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255
+
+
+def _auto_text_color(bg_hex):
+    """Waehlt automatisch dunklen oder hellen Text fuer eine Hintergrundfarbe -
+    beantwortet die Nutzerfrage 'Schriftfarbe automatisch passend zur
+    Hintergrund-/Buttonfarbe waehlen': wird sowohl fuer den Seitenhintergrund
+    (--paper-ink) als auch fuer die Button-Textfarbe (--accent-text)
+    genutzt."""
+    return DARK_TEXT if _luminance(bg_hex) > 0.5 else LIGHT_TEXT
+
+
+def _mix_hex(hex_color, target, amount):
+    """Mischt eine #RRGGBB-Farbe deterministisch mit einer Zielfarbe
+    (amount 0..1) - dient dazu, aus frei gewaehlten Farben abgeleitete
+    Varianten zu berechnen (Hover-Zustaende, helle Tint-Flaechen, gedaempfter
+    Fliesstext), ohne auf CSS color-mix() (Browser-Support) angewiesen zu
+    sein."""
+    r, g, b = _hex_to_rgb(hex_color)
+    tr, tg, tb = target
+    nr = round(r + (tr - r) * amount)
+    ng = round(g + (tg - g) * amount)
+    nb = round(b + (tb - b) * amount)
+    return f"#{nr:02X}{ng:02X}{nb:02X}"
+
+
+def _resolve_appearance(settings_dict):
+    """Loest gespeicherte Settings zu vollstaendigen, GARANTIERT sicheren
+    Anzeigewerten auf (Defaults bei fehlenden oder kaputten Werten) - wird
+    sowohl fuer die base.html-Style-Injektion als auch fuers Vorbefuellen des
+    Appearance-Formulars genutzt. Die Regex-Pruefung ist bewusst hier
+    zentralisiert, nicht nur in der Route: jeder Wert, der je in den
+    <style>-Block von base.html eingebettet wird, muss diese Funktion
+    durchlaufen haben - sonst waere CSS-Injection ueber einen manipulierten
+    POST moeglich (Jinja escaped zwar HTML, aber kein CSS-Syntax).
+
+    Leitet ausserdem automatisch kontrastierende Text-/Hover-Farben ab
+    (paper_ink/paper_ink_soft/paper_hover/accent_text) - Seitenleiste,
+    Ueberschriften und Buttons bleiben so unabhaengig von der frei gewaehlten
+    Hintergrund-/Akzentfarbe lesbar (siehe static/style.css, Tokens
+    --paper-ink* und --accent-text)."""
+    bg = settings_dict.get("bg_color", APPEARANCE_DEFAULTS["bg_color"])
+    accent = settings_dict.get("accent_color", APPEARANCE_DEFAULTS["accent_color"])
+    font_scale = settings_dict.get("font_scale", APPEARANCE_DEFAULTS["font_scale"])
+    if not HEX_COLOR_RE.match(bg):
+        bg = APPEARANCE_DEFAULTS["bg_color"]
+    if not HEX_COLOR_RE.match(accent):
+        accent = APPEARANCE_DEFAULTS["accent_color"]
+    if font_scale not in FONT_SCALE_VALUES:
+        font_scale = APPEARANCE_DEFAULTS["font_scale"]
+
+    paper_ink = _auto_text_color(bg)
+    paper_is_light = _luminance(bg) > 0.5
+    hover_target = (0, 0, 0) if paper_is_light else (255, 255, 255)
+    hover_amount = 0.06 if paper_is_light else 0.12
+
+    return {
+        "bg_color": bg,
+        "accent_color": accent,
+        "accent_ink": _mix_hex(accent, (0, 0, 0), 0.35),
+        "accent_tint": _mix_hex(accent, (255, 255, 255), 0.9),
+        "accent_text": _auto_text_color(accent),
+        "paper_ink": paper_ink,
+        "paper_ink_soft": _mix_hex(paper_ink, _hex_to_rgb(bg), 0.3),
+        "paper_hover": _mix_hex(bg, hover_target, hover_amount),
+        "font_scale": font_scale,
+    }
+
+
+@app.context_processor
+def _inject_appearance():
+    user = current_user()
+    if user is None:
+        return {}
+    with db.db_session() as conn:
+        settings_dict = db.get_settings(conn, user["id"])
+    return {"appearance": _resolve_appearance(settings_dict)}
 
 
 def admin_required(view):
@@ -288,32 +404,109 @@ def user_delete(target_id):
     return redirect(url_for("users_list"))
 
 
+@app.route("/einstellungen", methods=["GET", "POST"])
+def settings():
+    user = current_user()
+    uid = user["id"]
+    active_tab = request.args.get("tab", default="account")
+    if active_tab not in ("account", "appearance"):
+        active_tab = "account"
+
+    account_username = user["username"]
+
+    if request.method == "POST":
+        section = request.form.get("section")
+
+        if section == "account":
+            active_tab = "account"
+            username = request.form.get("username", "").strip()
+            account_username = username
+            new_password = request.form.get("new_password", "")
+            new_password_confirm = request.form.get("new_password_confirm", "")
+            current_password = request.form.get("current_password", "")
+            changing_password = bool(new_password or new_password_confirm)
+
+            errors = []
+            if not username:
+                errors.append("Bitte einen Benutzernamen angeben.")
+            if changing_password:
+                if not check_password_hash(user["password_hash"], current_password):
+                    errors.append("Das aktuelle Passwort ist falsch.")
+                if len(new_password) < 8:
+                    errors.append("Das neue Passwort muss mindestens 8 Zeichen lang sein.")
+                elif new_password != new_password_confirm:
+                    errors.append("Die neuen Passwörter stimmen nicht überein.")
+
+            with db.db_session() as conn:
+                if not errors and username != user["username"] and db.get_user_by_username(conn, username):
+                    errors.append("Dieser Benutzername ist bereits vergeben.")
+
+            if errors:
+                for e in errors:
+                    flash(e, "error")
+            else:
+                with db.db_session() as conn:
+                    if username != user["username"]:
+                        db.set_username(conn, uid, username)
+                    if changing_password:
+                        db.set_password(conn, uid, generate_password_hash(new_password))
+                flash("Änderungen gespeichert.", "success")
+                return redirect(url_for("settings", tab="account"))
+
+        elif section == "appearance":
+            active_tab = "appearance"
+            bg_color = request.form.get("bg_color", "")
+            accent_color = request.form.get("accent_color", "")
+            font_scale = request.form.get("font_scale", "")
+
+            errors = []
+            if not HEX_COLOR_RE.match(bg_color):
+                errors.append("Ungültige Hintergrundfarbe.")
+            if not HEX_COLOR_RE.match(accent_color):
+                errors.append("Ungültige Akzentfarbe.")
+            if font_scale not in FONT_SCALE_VALUES:
+                errors.append("Ungültige Schriftgröße.")
+
+            if errors:
+                for e in errors:
+                    flash(e, "error")
+            else:
+                with db.db_session() as conn:
+                    db.set_setting(conn, uid, "bg_color", bg_color.upper())
+                    db.set_setting(conn, uid, "accent_color", accent_color.upper())
+                    db.set_setting(conn, uid, "font_scale", font_scale)
+                flash("Darstellung gespeichert.", "success")
+                return redirect(url_for("settings", tab="appearance"))
+
+    with db.db_session() as conn:
+        settings_dict = db.get_settings(conn, uid)
+    appearance = _resolve_appearance(settings_dict)
+
+    if request.method == "POST" and request.form.get("section") == "appearance":
+        # Bei Validierungsfehlern die eingegebenen (statt der gespeicherten)
+        # Werte zurueckspiegeln, damit der Nutzer sie nicht neu eingeben muss.
+        # _resolve_appearance() validiert dabei erneut - garantiert sichere
+        # Werte fuer den <style>-Block in base.html (siehe dessen Docstring).
+        appearance = _resolve_appearance({
+            "bg_color": request.form.get("bg_color", ""),
+            "accent_color": request.form.get("accent_color", ""),
+            "font_scale": request.form.get("font_scale", ""),
+        })
+
+    return render_template(
+        "einstellungen.html",
+        active_tab=active_tab,
+        account_username=account_username,
+        appearance=appearance,
+        font_scale_options=FONT_SCALE_OPTIONS,
+    )
+
+
 @app.route("/profil", methods=["GET", "POST"])
 def profile():
-    user = current_user()
-    if request.method == "POST":
-        current_password = request.form.get("current_password", "")
-        new_password = request.form.get("new_password", "")
-        new_password_confirm = request.form.get("new_password_confirm", "")
-
-        errors = []
-        if not check_password_hash(user["password_hash"], current_password):
-            errors.append("Das aktuelle Passwort ist falsch.")
-        if len(new_password) < 8:
-            errors.append("Das neue Passwort muss mindestens 8 Zeichen lang sein.")
-        elif new_password != new_password_confirm:
-            errors.append("Die neuen Passwörter stimmen nicht überein.")
-
-        if errors:
-            for e in errors:
-                flash(e, "error")
-        else:
-            with db.db_session() as conn:
-                db.set_password(conn, user["id"], generate_password_hash(new_password))
-            flash("Passwort geändert.", "success")
-            return redirect(url_for("profile"))
-
-    return render_template("profil.html")
+    """Aufgeloest in den Settings-Tab (siehe /einstellungen) - Endpoint bleibt
+    fuer Altlinks/Bookmarks bestehen und leitet nur noch weiter."""
+    return redirect(url_for("settings"))
 
 
 # ---------------------------------------------------------------- Dashboard

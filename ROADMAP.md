@@ -11,32 +11,52 @@ der hier genannten Ideen stammen.
 Ursprünglich vorgesehene Reihenfolge war Settings-Tab → Nutzerverwaltung →
 Remote DB / Sync → Ersteinrichtung. Tatsächlich wurden zuerst **Nutzerver-
 waltung** und eine **einfache Ersteinrichtung** umgesetzt (ohne die
-Remote-DB/Sync-Wahl aus Punkt 4, da Punkt 3 noch nicht existiert) - der
-Settings-Tab bleibt offen und ist weiterhin ein guter naechster Schritt,
-bevor Remote DB / Sync sinnvoll angegangen werden kann.
+Remote-DB/Sync-Wahl aus Punkt 4, da Punkt 3 noch nicht existiert), danach
+der **Settings-Tab** (Punkt 1, Version 3.0.0) - Remote DB / Sync (Punkt 3)
+ist damit der verbleibende naechste Schritt.
 
-## 1. Settings-Tab
+## 1. Settings-Tab ✅ umgesetzt (Version 3.0.0)
 
-**Ziel:** Eine zentrale Einstellungsseite, die die aktuell fehlende
+**Ziel:** Eine zentrale Einstellungsseite, die die zuvor fehlende
 Persistenz-/Konfigurationsschicht der App schafft.
 
-**Betroffen:**
-- Neuer Nav-Eintrag in `templates/base.html`
-- Neue Route in `app.py`
-- Neues Template `templates/einstellungen.html`
-- Neue Key/Value-Tabelle `settings` in `db.py` (`SCHEMA` + `_migrate()`,
-  Major-Bump auf 3.0.0), je Nutzer scopen (`user_id`-Spalte, wie die
-  Nutzerverwaltung es für `accounts`/`categories`/`transactions` vorgemacht
-  hat)
-- Getter/Setter-Helfer in `db.py`
+**Umgesetzt:**
+- Route `GET/POST /einstellungen` (Endpoint `settings`) mit zwei Tabs:
+  **Account** (Benutzername ändern, Passwort ändern - hier ist `/profil`
+  aufgegangen, der alte Endpoint bleibt als reiner Redirect bestehen) und
+  **Appearance** (Hintergrund-/Akzentfarbe per freiem Farbwähler,
+  Schriftgröße als vierstufige Auswahl)
+- Neue Key/Value-Tabelle `settings` in `db.py` (`user_id, key, value`,
+  Primary Key `(user_id, key)`), Getter/Setter `db.get_settings()` /
+  `db.set_setting()`, Major-Bump auf 3.0.0
+- Appearance-Werte werden serverseitig validiert (`^#[0-9A-Fa-f]{6}$` für
+  Farben, feste Allowlist für die Schriftgröße) und über einen
+  Context-Prozessor (`app.py::_inject_appearance`) als `<style>`-Override
+  der CSS-Design-Tokens (`--paper`, `--brand`, `--brand-ink`,
+  `--brand-tint`, `--font-scale`) in `templates/base.html` eingebettet -
+  siehe dessen Kommentar zur CSS-Injection-Absicherung
+- Live-Vorschau der Farb-/Größenwahl per Inline-JS, noch vor dem Speichern
+- CSS-only Tab-UI (`static/style.css`, Abschnitt "Tabs (Einstellungen)")
+  nach dem Muster der bestehenden `type-toggle`-Idiome
 
-**Erste Inhalte:** `PAGE_SIZE` (heute hart in `db.py`), Standard-Zeitraum
-für die Statistik, evtl. der `--online`-Warnhinweis (heute noch als reiner
-CLI-Hinweis in `app.py`, siehe `--online`-Flag). Später Andockpunkt für
-Backup/Export.
+**Nachtraeglich ergaenzt:** Seitenleiste/mobile Menueleiste folgen ebenfalls
+der gewaehlten Hintergrundfarbe (zuvor blieben sie auf festem Weiss, siehe
+`.sidebar`/`.topbar` in `static/style.css`); automatischer Text-/Button-
+Kontrast (`app.py::_auto_text_color`, Tokens `--paper-ink*`/`--accent-text`)
+waehlt hell oder dunkel je nach Helligkeit der gewaehlten Hintergrund- bzw.
+Akzentfarbe - dafuer musste `--paper` von einem zweiten, informell
+mitgenutzten Zweck ("generische helle Flaeche innerhalb weisser Karten":
+Formularfelder, Tabellenkopf, Badges, Fortschrittsbalken) entkoppelt werden
+(neues, festes Token `--surface-tint`), sonst waeren diese bei dunkler
+Hintergrundwahl dunkel-auf-dunkel geworden.
 
-**Tests:** neue Route in `GET_ROUTEN` (`tests/test_routes_smoke.py`),
-Migrationstest (`tests/test_migration.py`).
+**Bewusst nicht umgesetzt:** `PAGE_SIZE`/Statistik-Standardzeitraum/
+`--online`-Warnhinweis als konfigurierbare Settings - die `settings`-Tabelle
+ist dafür vorbereitet (freies Key/Value-Schema), aber ungenutzte Keys wurden
+nicht vorab angelegt. Kartenflächen (`--surface`: Formulare, Tabellen, KPI-/
+Konto-Karten) bleiben bewusst IMMER hell, unabhängig von der gewählten
+Hintergrundfarbe - u. a. weil die Einnahme-/Ausgabe-Farbcodierung
+(`--positive`/`--negative`) auf hellem Untergrund ausgelegt ist.
 
 ## 2. Nutzerverwaltung ✅ umgesetzt (Version 2.0.0)
 
@@ -86,8 +106,9 @@ Zwei mögliche Richtungen:
   Design. Die Nutzerverwaltung (Punkt 2, jetzt vorhanden) liefert dafür
   bereits die Eigentümer-Basis (`user_id`) für Konfliktauflösung.
 
-**Abhängigkeit:** setzt den Settings-Tab (für Konfiguration) voraus —
-deshalb weiterhin nach Punkt 1 eingeplant.
+**Abhängigkeit:** setzte den Settings-Tab (für Konfiguration) voraus — der
+existiert seit Version 3.0.0 (Punkt 1), die `settings`-Tabelle kann für die
+Verbindungsdaten (Variante A) mitgenutzt werden.
 
 ## 4. Ersteinrichtung ⚠️ teilweise umgesetzt (Version 2.0.0)
 

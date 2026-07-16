@@ -8,6 +8,26 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% if current_user %}
+<!-- Ueberschreibt die Design-Tokens aus style.css mit den vom Nutzer im
+     Settings-Tab (Appearance) gewaehlten Werten. appearance kommt aus dem
+     _inject_appearance-Kontextprozessor (app.py) und ist dort IMMER bereits
+     auf sichere #RRGGBB-Werte validiert (_resolve_appearance) - direktes
+     Einbetten hier ist deshalb unbedenklich. -->
+<style>
+:root {
+    --paper: {{ appearance.bg_color }};
+    --paper-ink: {{ appearance.paper_ink }};
+    --paper-ink-soft: {{ appearance.paper_ink_soft }};
+    --paper-hover: {{ appearance.paper_hover }};
+    --brand: {{ appearance.accent_color }};
+    --brand-ink: {{ appearance.accent_ink }};
+    --brand-tint: {{ appearance.accent_tint }};
+    --accent-text: {{ appearance.accent_text }};
+    --font-scale: {{ appearance.font_scale }};
+}
+</style>
+{% endif %}
 {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -41,10 +61,11 @@
             {% if current_user.role == 'admin' %}
             <a href="{{ url_for('users_list') }}" class="{{ 'active' if request.endpoint in ['users_list','user_new'] }}">Nutzer</a>
             {% endif %}
+            <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint in ['settings','profile'] }}">Einstellungen</a>
         </nav>
         <a href="{{ url_for('transaction_new') }}" class="btn btn-primary sidebar-cta">+ Neue Buchung</a>
         <div class="sidebar-user">
-            <a href="{{ url_for('profile') }}" class="sidebar-username">{{ current_user.username }}</a>
+            <a href="{{ url_for('settings') }}" class="sidebar-username">{{ current_user.username }}</a>
             <form method="post" action="{{ url_for('logout') }}">
                 <button type="submit" class="link-button">Abmelden</button>
             </form>
