@@ -15,10 +15,13 @@ from pathlib import Path
 import argparse
 import csv
 import io
+import os
 import re
 import secrets
+import shutil
 import socket
 import sys
+import tempfile
 
 from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -422,7 +425,12 @@ def settings():
     user = current_user()
     uid = user["id"]
     active_tab = request.args.get("tab", default="account")
-    if active_tab not in ("account", "appearance"):
+    if active_tab not in ("account", "appearance", "db"):
+        active_tab = "account"
+    if active_tab == "db" and user["role"] != "admin":
+        # Die DB betrifft alle Nutzer gemeinsam (ein einziges SQLite-File) -
+        # Speicherort/Backup/Restore sind daher wie die Nutzerverwaltung
+        # Admin-only (siehe admin_required weiter oben).
         active_tab = "account"
 
     account_username = user["username"]
@@ -491,6 +499,50 @@ def settings():
                 flash("Darstellung gespeichert.", "success")
                 return redirect(url_for("settings", tab="appearance"))
 
+        elif section == "db" and user["role"] == "admin":
+            active_tab = "db"
+            db_dir_input = request.form.get("db_dir", "").strip()
+            errors = []
+            target = None
+
+            if not db_dir_input:
+                errors.append("Bitte einen Zielordner angeben.")
+            else:
+                ziel = Path(db_dir_input)
+                if not ziel.is_dir():
+                    errors.append("Der angegebene Ordner existiert nicht.")
+                else:
+                    target = ziel / db.DEFAULT_DB_NAME
+                    if target.resolve() == db.DB_PATH.resolve():
+                        errors.append("Dieser Ordner ist bereits der aktuelle Speicherort.")
+                    elif not target.exists():
+                        # Neuer, noch leerer Zielort: konsistenten Snapshot der
+                        # aktuellen DB dorthin schreiben (SQLite-Backup-API,
+                        # siehe db.backup_to) und den Secret-Key mitnehmen,
+                        # damit bestehende Logins den Neustart ueberleben.
+                        try:
+                            db.backup_to(target)
+                            if SECRET_KEY_PATH.exists():
+                                shutil.copy2(SECRET_KEY_PATH, ziel / ".secret_key")
+                        except OSError:
+                            errors.append("Der Zielordner ist nicht beschreibbar.")
+                    # sonst: am Zielort liegt bereits eine Datenbank - wird nur
+                    # uebernommen (adopt), nicht ueberschrieben.
+
+            if errors:
+                for e in errors:
+                    flash(e, "error")
+            else:
+                cfg = db.load_config()
+                cfg["db_path"] = str(target)
+                db.save_config(cfg)
+                flash(
+                    "Speicherort gespeichert. Bitte Klarcash neu starten, "
+                    "damit der neue Ort aktiv wird.",
+                    "success",
+                )
+                return redirect(url_for("settings", tab="db"))
+
     with db.db_session() as conn:
         settings_dict = db.get_settings(conn, uid)
     appearance = _resolve_appearance(settings_dict)
@@ -512,6 +564,7 @@ def settings():
         account_username=account_username,
         appearance=appearance,
         font_scale_options=FONT_SCALE_OPTIONS,
+        db_current_dir=str(db.DB_PATH.parent),
     )
 
 
@@ -520,6 +573,54 @@ def profile():
     """Aufgeloest in den Settings-Tab (siehe /einstellungen) - Endpoint bleibt
     fuer Altlinks/Bookmarks bestehen und leitet nur noch weiter."""
     return redirect(url_for("settings"))
+
+
+@app.route("/einstellungen/db/backup")
+@admin_required
+def settings_db_backup():
+    """Liefert einen konsistenten Snapshot der aktuellen DB als Download -
+    Admin-only wie der Rest des DB-Tabs (siehe settings())."""
+    fd, tmp_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        db.backup_to(tmp_path)
+        data = Path(tmp_path).read_bytes()
+    finally:
+        os.remove(tmp_path)
+
+    filename = f"klarcash-backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}.db"
+    return Response(
+        data,
+        mimetype="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@app.route("/einstellungen/db/restore", methods=["POST"])
+@admin_required
+def settings_db_restore():
+    """Ersetzt die aktuelle DB durch eine hochgeladene Backup-Datei. Wird vor
+    dem Ersetzen validiert (db.is_valid_db: Datei intakt UND kompatible
+    Major-Version) - eine ungueltige Datei darf die produktive DB nie
+    ueberschreiben."""
+    upload = request.files.get("backup_file")
+    if not upload or not upload.filename:
+        flash("Bitte eine Backup-Datei auswählen.", "error")
+        return redirect(url_for("settings", tab="db"))
+
+    fd, tmp_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        upload.save(tmp_path)
+        if not db.is_valid_db(tmp_path):
+            flash("Diese Datei ist keine gültige oder kompatible Klarcash-Datenbank.", "error")
+            return redirect(url_for("settings", tab="db"))
+        shutil.copy2(tmp_path, db.DB_PATH)
+    finally:
+        os.remove(tmp_path)
+
+    flash("Backup eingespielt. Bitte Klarcash neu starten.", "success")
+    return redirect(url_for("settings", tab="db"))
 
 
 # ---------------------------------------------------------------- Dashboard

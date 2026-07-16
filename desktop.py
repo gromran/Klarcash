@@ -20,9 +20,16 @@ import db
 # Muss VOR "import app" gesetzt werden: app.py leitet SECRET_KEY_PATH beim
 # Import aus db.DB_PATH ab (app.py:26). Bei einer Ueberschreibung erst nach
 # dem Import wuerde der Secret-Key weiterhin neben dem alten Pfad landen.
+#
+# CONFIG_DIR (statt eines fest verdrahteten DB_PATH) wird gesetzt, damit ein
+# im Settings-Tab "Datenbank" gewaehlter abweichender Speicherort (siehe
+# klarcash_config.json) auch im Desktop-Build beruecksichtigt wird -
+# resolve_db_path() liest genau diese Datei. Ohne eigene Config bleibt es
+# beim bisherigen Standard %APPDATA%\Klarcash\ausgaben.db.
 _DATA_DIR = Path(os.environ["APPDATA"]) / "Klarcash"
 _DATA_DIR.mkdir(parents=True, exist_ok=True)
-db.DB_PATH = _DATA_DIR / "ausgaben.db"
+db.CONFIG_DIR = _DATA_DIR
+db.DB_PATH = db.resolve_db_path()
 
 import app  # noqa: E402  (Import bewusst erst nach dem DB_PATH-Override)
 

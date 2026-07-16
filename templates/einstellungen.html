@@ -8,10 +8,16 @@
 <div class="tabs">
     <input type="radio" name="settings-tab" id="tab-account" class="tab-radio" {{ 'checked' if active_tab == 'account' }}>
     <input type="radio" name="settings-tab" id="tab-appearance" class="tab-radio" {{ 'checked' if active_tab == 'appearance' }}>
+    {% if current_user.role == 'admin' %}
+    <input type="radio" name="settings-tab" id="tab-db" class="tab-radio" {{ 'checked' if active_tab == 'db' }}>
+    {% endif %}
 
     <div class="tab-bar">
         <label for="tab-account" class="tab-label">Account</label>
         <label for="tab-appearance" class="tab-label">Appearance</label>
+        {% if current_user.role == 'admin' %}
+        <label for="tab-db" class="tab-label">Datenbank</label>
+        {% endif %}
     </div>
 
     <div class="tab-panel" id="panel-account">
@@ -69,6 +75,52 @@
         </form>
         </div>
     </div>
+
+    {% if current_user.role == 'admin' %}
+    <div class="tab-panel" id="panel-db">
+        <div class="form-card" style="margin-bottom:20px;">
+        <h2 style="margin-top:0;">Speicherort</h2>
+        <p class="subtitle">Aktueller Ordner: <code>{{ db_current_dir }}</code></p>
+        <form method="post">
+            <input type="hidden" name="section" value="db">
+            <div class="field">
+                <label for="db_dir">Neuer Zielordner</label>
+                <input type="text" name="db_dir" id="db_dir" value="{{ db_current_dir }}" required>
+                <small>Der Ordner muss bereits existieren. Nach dem Speichern bitte Klarcash neu starten.</small>
+            </div>
+            <div class="actions-row" style="justify-content:flex-end; margin-bottom:0;">
+                <button type="submit" class="btn btn-primary">Speichern</button>
+            </div>
+        </form>
+        </div>
+
+        <div class="form-card" style="margin-bottom:20px;">
+        <h2 style="margin-top:0;">Backup</h2>
+        <p class="subtitle">Sichert bzw. ersetzt die gesamte Datenbank (alle Nutzer).</p>
+        <div class="actions-row" style="justify-content:flex-start; margin-bottom:16px;">
+            <a href="{{ url_for('settings_db_backup') }}" class="btn">Backup herunterladen</a>
+        </div>
+        <form method="post" action="{{ url_for('settings_db_restore') }}" enctype="multipart/form-data">
+            <div class="field">
+                <label for="backup_file">Backup einspielen</label>
+                <input type="file" name="backup_file" id="backup_file" accept=".db" required>
+                <small>Ersetzt die aktuelle Datenbank vollständig. Anschließend Klarcash neu starten.</small>
+            </div>
+            <div class="actions-row" style="justify-content:flex-end; margin-bottom:0;">
+                <button type="submit" class="btn btn-primary">Einspielen</button>
+            </div>
+        </form>
+        </div>
+
+        <div class="form-card">
+        <h2 style="margin-top:0;">Remote-Anbindung</h2>
+        <p class="subtitle">
+            Geplant: Anbindung an Google Drive, NextCloud oder SFTP für einen
+            geräteübergreifenden Sync. Noch nicht verfügbar.
+        </p>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 {% endblock %}

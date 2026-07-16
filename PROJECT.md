@@ -271,6 +271,15 @@ Login ist Pflicht. Zwei `before_request`-Gates laufen nach dem Schema-Gate:
    Appearance (frei wählbare Hintergrund-/Akzentfarbe inkl. Sidebar/mobiler
    Topbar, Schriftgröße, automatischer Text-/Button-Kontrast), je Nutzer in
    der neuen `settings`-Tabelle persistiert. Siehe `ROADMAP.md`, Punkt 1.
+10. DB-Tab (Version 3.4.0, Admin-only): dritter Settings-Tab **Datenbank** -
+    Speicherort der SQLite-Datei änderbar (Ziel liegt in einer externen
+    `klarcash_config.json` neben der DB, nicht in der `settings`-Tabelle,
+    da der Speicherort selbst gebraucht wird, bevor die DB an diesem Ort
+    geöffnet werden kann; `db.load_config()`/`db.save_config()`/
+    `db.resolve_db_path()`), sowie Backup-Download und Restore-Upload der
+    DB-Datei (`db.backup_to()` über die SQLite-Backup-API, Restore validiert
+    über `db.is_valid_db()` vor dem Überschreiben). Erste (lokale) Phase von
+    Remote DB/Sync, siehe `ROADMAP.md`, Punkt 3.
 
 ## Bekannte, bewusst nicht umgesetzte Punkte (Ideen für Weiterentwicklung)
 
@@ -279,7 +288,6 @@ Aus einer früheren Ideensammlung im Chat, noch nicht umgesetzt:
 - Wiederkehrende Buchungen (Miete, Gehalt, Abos) mit automatischer Anlage
 - Budgets pro Kategorie mit Fortschrittsbalken
 - Beleg-Anhänge (Foto/PDF je Buchung)
-- Backup-Funktion im UI (DB-Datei als Download anbieten)
 - Jahresvergleich in den Statistiken
 - Vermögensentwicklung je Konto (statt nur Gesamtsumme)
 - Sparquote als KPI

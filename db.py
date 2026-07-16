@@ -5,11 +5,50 @@ Bewusst ohne ORM gehalten, damit die App ohne zusaetzliche Abhaengigkeiten
 (ausser Flask) auskommt.
 """
 
+import json
 import sqlite3
 from pathlib import Path
 from contextlib import contextmanager
 
-DB_PATH = Path(__file__).parent / "ausgaben.db"
+# Verzeichnis, in dem sowohl die Konfigurationsdatei (klarcash_config.json)
+# als auch - mangels anderslautender Konfiguration - die Datenbank selbst
+# liegen. Wie DB_PATH schon bisher wird auch dies von den Launchern VOR
+# "import app" ueberschrieben (siehe desktop.py), damit z. B. der Desktop-Build
+# %APPDATA%\Klarcash statt des Installationsverzeichnisses verwendet.
+CONFIG_DIR = Path(__file__).parent
+CONFIG_FILENAME = "klarcash_config.json"
+DEFAULT_DB_NAME = "ausgaben.db"
+
+
+def config_file():
+    return CONFIG_DIR / CONFIG_FILENAME
+
+
+def load_config():
+    """Liest klarcash_config.json. Liefert ein leeres dict, wenn die Datei
+    fehlt oder kaputt ist (kein Crash durch manuell editierte/beschaedigte
+    Config) - der Aufrufer faellt dann auf Standardwerte zurueck."""
+    try:
+        return json.loads(config_file().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def save_config(cfg):
+    config_file().write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+
+
+def resolve_db_path():
+    """Ermittelt den aktuell gueltigen DB-Pfad: den in der Config hinterlegten
+    Pfad (siehe Settings-Tab "Datenbank"), falls vorhanden, sonst den
+    Standardort CONFIG_DIR/ausgaben.db."""
+    configured = load_config().get("db_path")
+    if configured:
+        return Path(configured)
+    return CONFIG_DIR / DEFAULT_DB_NAME
+
+
+DB_PATH = resolve_db_path()
 
 # Major.Minor.Patch. Die Major-Zahl ist die Schema-Version: sie MUSS erhoeht
 # werden, sobald SCHEMA/SCHEMA_INDEXES oder _migrate() sich aendern (neue
@@ -34,7 +73,11 @@ DB_PATH = Path(__file__).parent / "ausgaben.db"
 # %APPDATA%\Klarcash - keine Schema-Aenderung.
 # 3.3.0: App-Icons eingebaut (Web-Favicons + Manifest, Android Adaptive Icon,
 # Desktop-.exe-/Fenster-Icon) - keine Schema-Aenderung.
-APP_VERSION = "3.3.0"
+# 3.4.0: DB-Tab (Settings) - waehlbarer Speicherort via klarcash_config.json
+# sowie Backup/Restore der DB-Datei - keine Schema-Aenderung.
+# 3.4.1: build_desktop.bat fuer One-Click-EXE-Build ergaenzt - keine
+# Schema-Aenderung, nur Build-Tooling.
+APP_VERSION = "3.4.1"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -213,6 +256,47 @@ def is_compatible(conn):
     init_db() angelegt, aber noch nicht migriert) gilt als NICHT kompatibel,
     bis migrate() explizit gelaufen ist."""
     return major(db_version(conn)) == major(APP_VERSION)
+
+
+def backup_to(dest):
+    """Schreibt einen konsistenten Snapshot der aktuellen DB nach dest, ueber
+    die sqlite3-Backup-API (statt einer rohen Dateikopie) - das funktioniert
+    auch dann sauber, wenn parallel geschrieben wird, und bleibt dabei ohne
+    zusaetzliche Abhaengigkeit (siehe Modul-Docstring)."""
+    src = sqlite3.connect(DB_PATH)
+    try:
+        dst = sqlite3.connect(dest)
+        try:
+            src.backup(dst)
+        finally:
+            dst.close()
+    finally:
+        src.close()
+
+
+def is_valid_db(path):
+    """Prueft, ob path eine intakte, mit dem aktuellen Code kompatible
+    Klarcash-Datenbank ist (fuer die Restore-Funktion im Settings-Tab).
+    Liefert False statt eine Exception zu werfen, wenn die Datei keine
+    SQLite-DB ist, beschaedigt ist, oder aus einer anderen Major-Version
+    stammt. Oeffnet bewusst NICHT read-only, da is_compatible()/db_version()
+    ueber _ensure_meta() die schema_meta-Tabelle bei Bedarf anlegen - path ist
+    hier immer eine hochgeladene Temp-Datei, kein Schreibzugriff auf die
+    produktive DB."""
+    try:
+        conn = sqlite3.connect(path)
+        conn.row_factory = sqlite3.Row  # is_compatible()/db_version() erwarten Row-Zugriff per Spaltenname
+    except sqlite3.OperationalError:
+        return False
+    try:
+        integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
+        if integrity != "ok":
+            return False
+        return is_compatible(conn)
+    except sqlite3.DatabaseError:
+        return False
+    finally:
+        conn.close()
 
 
 def _core_tables_exist(conn):

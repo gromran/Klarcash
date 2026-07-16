@@ -90,13 +90,45 @@ absicherbar.
 (Punkt 1) als Unterbau - die Nutzerverwaltung lebt als eigenständige
 Routengruppe; kann bei Bedarf später dorthin verschoben werden.
 
-## 3. Remote DB / Sync
+## 3. Remote DB / Sync ⚠️ teilweise umgesetzt (Version 3.4.0)
 
 **Ziel:** Daten geräteübergreifend verfügbar machen (Desktop ↔ die
 Android-WebView-App in `android/`, deren `app.py`/`db.py` per Gradle-Task
 `copyPythonSources` automatisch aus dem Projekt-Root übernommen werden).
 
-Zwei mögliche Richtungen:
+**Umgesetzt (Phase 1 - lokaler Speicherort + Backup/Restore):**
+- Dritter Tab **Datenbank** unter `/einstellungen` (Admin-only, `admin_required`
+  - die DB ist ein einziges, app-weit geteiltes SQLite-File, kein
+  Pro-Nutzer-Setting wie Account/Appearance)
+- Externe Konfigurationsdatei `klarcash_config.json` neben der DB
+  (`db.load_config()`/`db.save_config()`/`db.resolve_db_path()`) - bewusst
+  **nicht** die `settings`-Tabelle, da die den Speicherort selbst nicht
+  kennen kann, solange die DB an diesem Ort noch nicht geöffnet ist
+  (Henne-Ei-Problem)
+- Speicherort wechselbar über ein Zielordner-Textfeld; Wechsel schreibt
+  einen konsistenten Snapshot über die SQLite-Backup-API (`db.backup_to()`)
+  an den neuen Ort und aktualisiert `klarcash_config.json` - wirksam erst
+  nach einem Neustart, da `db.DB_PATH`/`SECRET_KEY_PATH` beim Programmstart
+  gebunden werden (siehe `desktop.py`-Kommentar zur Import-Reihenfolge)
+- Backup-Download (`GET /einstellungen/db/backup`, konsistenter Snapshot)
+  und Restore-Upload (`POST /einstellungen/db/restore`, validiert über
+  `db.is_valid_db()`: Integritätscheck + Major-Versions-Kompatibilität,
+  bevor die produktive DB überschrieben wird)
+- Bewusst **keine neue Python-Abhängigkeit** (Policy "nur Flask", siehe
+  `PROJECT.md`) - wichtig auch für die Android/Chaquopy-arm64-Wheels
+
+**Offen (Phase 2 - echter Remote-Sync):** Google Drive / NextCloud / SFTP
+als Ziel für Push/Pull der DB-Datei (ROADMAP-Variante B unten), an das
+Backup/Restore aus Phase 1 andockt. Jeder dieser Provider erfordert eine
+neue Abhängigkeit (z. B. WebDAV-Client oder `requests` für NextCloud,
+`paramiko` für SFTP, Google-API-Client + OAuth für Drive) - vor der Wahl
+muss geprüft werden, ob dafür arm64-Wheels existieren, die auch unter
+Chaquopy (Android) laufen. Variante A (echtes Remote-DB-Backend statt
+Datei-Sync) bleibt unten als Alternative dokumentiert, wurde aber nicht
+gewählt.
+
+Zwei mögliche Richtungen (Analyse von vor Phase 1, weiterhin gültig für
+Phase 2):
 
 - **A – Remote-DB:** Abstraktion über `db.get_connection()` einführen und die
   Verbindungsdaten aus dem Settings-Tab konfigurierbar machen; Wechsel von
@@ -104,12 +136,16 @@ Zwei mögliche Richtungen:
   Konflikt mit der bewussten "kein ORM"-Entscheidung — hoher Aufwand.
 - **B – Sync:** lokales SQLite bleibt bestehen, zusätzlich Push/Pull bzw.
   Backup-Sync der DB-Datei oder ein Änderungs-Sync. Näher am bestehenden
-  Design. Die Nutzerverwaltung (Punkt 2, jetzt vorhanden) liefert dafür
-  bereits die Eigentümer-Basis (`user_id`) für Konfliktauflösung.
+  Design (Phase 1 oben nutzt bereits `db.backup_to()` dafür). Die
+  Nutzerverwaltung (Punkt 2) liefert dafür bereits die Eigentümer-Basis
+  (`user_id`) für Konfliktauflösung.
 
 **Abhängigkeit:** setzte den Settings-Tab (für Konfiguration) voraus — der
-existiert seit Version 3.0.0 (Punkt 1), die `settings`-Tabelle kann für die
-Verbindungsdaten (Variante A) mitgenutzt werden.
+existiert seit Version 3.0.0 (Punkt 1). Phase 1 verwendet dafür bewusst
+`klarcash_config.json` statt der `settings`-Tabelle (siehe oben); für
+Phase-2-Verbindungsdaten (Variante A bzw. Zugangsdaten für Variante B) käme
+je nach Sensitivität wieder die `settings`-Tabelle oder eine weitere externe
+Config-Datei infrage.
 
 ## 4. Ersteinrichtung ⚠️ teilweise umgesetzt (Version 2.0.0)
 

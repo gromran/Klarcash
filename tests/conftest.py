@@ -43,9 +43,14 @@ def _real_db_untouched():
 
 @pytest.fixture(autouse=True)
 def isolated_db(tmp_path, monkeypatch):
-    """Leitet alle DB-Zugriffe dieses Tests auf eine Wegwerf-Datei um."""
+    """Leitet alle DB-Zugriffe dieses Tests auf eine Wegwerf-Datei um.
+
+    CONFIG_DIR wird ebenfalls umgebogen, damit Tests, die
+    load_config()/save_config()/resolve_db_path() beruehren, niemals eine
+    echte klarcash_config.json im Projektverzeichnis anlegen."""
     path = tmp_path / "test.db"
     monkeypatch.setattr(db, "DB_PATH", path)
+    monkeypatch.setattr(db, "CONFIG_DIR", tmp_path)
     assert db.DB_PATH != REAL_DB
     return path
 

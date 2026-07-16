@@ -42,7 +42,7 @@
 <div class="layout">
     <header class="topbar">
         <a href="{{ url_for('dashboard') }}" class="brand">
-            <span class="brand-mark">§</span>
+            <img class="brand-mark" src="{{ url_for('static', filename='icons/klarcash-icon.svg') }}" alt="">
             <span class="brand-name">Klarcash</span>
         </a>
         {% if current_user %}
@@ -54,7 +54,7 @@
 
     <aside class="sidebar">
         <a href="{{ url_for('dashboard') }}" class="brand">
-            <span class="brand-mark">§</span>
+            <img class="brand-mark" src="{{ url_for('static', filename='icons/klarcash-icon.svg') }}" alt="">
             <span class="brand-name">Klarcash</span>
         </a>
         <nav class="nav">

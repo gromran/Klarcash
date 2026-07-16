@@ -88,16 +88,17 @@ a { color: inherit; text-decoration: none; }
 
 .brand {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 8px;
 }
 
-/* Markenschriftgroesse bewusst NICHT an --font-scale gekoppelt - das
-   Logo soll unabhaengig von der Textgroessen-Einstellung stabil wirken. */
+/* Markengroesse bewusst NICHT an --font-scale gekoppelt - das Logo soll
+   unabhaengig von der Textgroessen-Einstellung stabil wirken. */
 .brand-mark {
-    font-family: var(--font-display);
-    font-size: 26px;
-    color: var(--brand);
+    display: block;
+    width: 26px;
+    height: 26px;
+    border-radius: 22%;
 }
 
 .brand-name {
@@ -435,13 +436,15 @@ a.pill.items-badge:hover { border-color: var(--brand); color: var(--brand-ink); 
 .tab-panel { display: none; }
 
 #tab-account:checked ~ .tab-bar label[for="tab-account"],
-#tab-appearance:checked ~ .tab-bar label[for="tab-appearance"] {
+#tab-appearance:checked ~ .tab-bar label[for="tab-appearance"],
+#tab-db:checked ~ .tab-bar label[for="tab-db"] {
     color: var(--brand-ink);
     border-bottom-color: var(--brand);
 }
 
 #tab-account:checked ~ #panel-account { display: block; }
 #tab-appearance:checked ~ #panel-appearance { display: block; }
+#tab-db:checked ~ #panel-db { display: block; }
 
 /* ---------------- Kassenzettel-Posten ---------------- */
 .items-table-wrap {
@@ -658,7 +661,7 @@ form.inline { display: inline; }
     z-index: 30;
 }
 
-.topbar .brand-mark { font-size: 22px; }
+.topbar .brand-mark { width: 22px; height: 22px; }
 .topbar .brand-name { font-size: 17px; }
 
 .nav-burger {

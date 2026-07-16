@@ -34,7 +34,13 @@ DB_PATH = Path(__file__).parent / "ausgaben.db"
 # %APPDATA%\Klarcash - keine Schema-Aenderung.
 # 3.3.0: App-Icons eingebaut (Web-Favicons + Manifest, Android Adaptive Icon,
 # Desktop-.exe-/Fenster-Icon) - keine Schema-Aenderung.
-APP_VERSION = "3.3.0"
+# 3.4.0: DB-Tab (Settings) - waehlbarer Speicherort via klarcash_config.json
+# sowie Backup/Restore der DB-Datei - keine Schema-Aenderung. Betrifft nur die
+# Desktop/Web-Variante; der DB-Pfad wird auf Android weiterhin von Kotlin per
+# app.start(db_path=...) vorgegeben (siehe MainActivity.kt).
+# 3.4.1: build_desktop.bat fuer One-Click-EXE-Build ergaenzt - keine
+# Schema-Aenderung, nur Build-Tooling.
+APP_VERSION = "3.4.1"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (

@@ -8,6 +8,7 @@ venv/
 # --- Lokale Datenbank (persönliche Daten) ---
 ausgaben.db
 .secret_key
+klarcash_config.json
 
 # --- IDE ---
 .idea/

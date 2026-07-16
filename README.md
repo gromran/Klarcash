@@ -95,6 +95,36 @@ tests/               pytest-Suite
 ausgaben.db          SQLite-Datenbank (wird beim ersten Start erzeugt)
 ```
 
+## Windows-Desktop-App
+
+`desktop.py` startet denselben Flask-Server in einem Hintergrund-Thread und
+zeigt ihn per [pywebview](https://pywebview.flowrl.com/) (Windows WebView2/Edge)
+in einem nativen Fenster an – analog zur Android-App. Kein separates
+Frontend: `app.py`, `db.py`, `templates/` und `static/` werden unverändert
+weiterverwendet.
+
+### Aus dem Quellcode starten
+
+```bash
+pip install -r requirements-desktop.txt
+python desktop.py
+```
+
+### Eigenständige .exe bauen
+
+Voraussetzung ist lediglich ein installiertes Python 3. Einfach
+`build_desktop.bat` per Doppelklick ausführen (oder aus dem Terminal) – das
+Skript legt bei Bedarf eine `.venv` an, installiert
+`requirements-desktop.txt` und ruft anschließend PyInstaller mit der
+mitgelieferten `klarcash.spec` auf:
+
+```bash
+build_desktop.bat
+```
+
+Ergebnis: `desktop_build\dist\Klarcash.exe` (One-File-Build, Icon aus
+`static/icons/klarcash.ico`).
+
 ## Android-App
 
 Der Unterordner `android/` bettet denselben Flask-Server per

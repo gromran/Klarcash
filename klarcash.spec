@@ -1,6 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller-Spec fuer die eigenstaendige Windows-.exe.
-# Bauen mit: pyinstaller klarcash.spec --workpath desktop_build/build --distpath desktop_build/dist
+# Bequem per Doppelklick: build_desktop.bat (Projekt-Root) richtet bei Bedarf
+# eine .venv ein, installiert requirements-desktop.txt und ruft dann:
+#   pyinstaller klarcash.spec --workpath desktop_build/build --distpath desktop_build/dist
 # Ergebnis (One-File-Build) liegt danach unter desktop_build/dist/Klarcash.exe.
 
 a = Analysis(
